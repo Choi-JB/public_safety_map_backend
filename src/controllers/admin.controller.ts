@@ -2,26 +2,21 @@
 import { Request, Response } from "express";
 import prismaClient from '../config/prismaClient';
 
+// KST 시간 관련 유틸리티 함수 (오늘 시작 시간, 오늘 종료 시간, 기본 범위 시작 시간)
+import { getTodayStartKst, getTodayEndKst, getDefaultRangeStartKst } from '../utils/dateUtils';
+
 //bigint serializer 에러 바로 bigint를 문자로 리턴
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
+
 
 /** 대시보드 현황 조회 (전체(활성화된)+신규 신고 수, 전체+신규 피드백 수, 현재 진행 중인 도시 행사 수)*/
 export const getAdminSummary = async (req: Request, res: Response): Promise<Response> => {
 
   try {
     const now = new Date(); // 현재 시각 UTC
-    const kstOffsetMs = 9 * 60 * 60 * 1000; // KST 오프셋 (9시간)
-    const kstNow = new Date(now.getTime() + kstOffsetMs); // 현재 시각 KST
-    const todayStartKst = new Date(
-      Date.UTC(
-        kstNow.getUTCFullYear(),
-        kstNow.getUTCMonth(),
-        kstNow.getUTCDate(),
-        0, 0, 0, 0
-      ) - kstOffsetMs // KST 00:00:00
-    ); // 오늘 00:00:00 KST
+    const todayStartKst = getTodayStartKst();//오늘 시작 시간(KST) 00시 00분 00초
 
     const [
       active_reports,
@@ -77,48 +72,44 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
 /** 유저 신고 목록 조회(필터 별 조회) 필터: 전체(최신순), 동네 구역별, 활성화 여부 */
 export const getUserReports = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const now = new Date(); // 현재 시각 UTC
-    const kstOffsetMs = 9 * 60 * 60 * 1000; // KST 오프셋 (9시간)
-    const kstNow = new Date(now.getTime() + kstOffsetMs); // 현재 시각 KST
-    const todayStartKst = new Date(
-      Date.UTC(
-        kstNow.getUTCFullYear(),
-        kstNow.getUTCMonth(),
-        kstNow.getUTCDate(),
-        0, 0, 0, 0
-      ) - kstOffsetMs // KST 00:00:00
-    ); // 오늘 00:00:00 KST
 
-    // 오늘 끝(다음날 0시 직전) — 날짜없을 경우 기본값
-    const todayEndKst = new Date(todayStartKst.getTime() + 24 * 60 * 60 * 1000 - 1);
-    const defaultStart = new Date(todayStartKst.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    const dateFromRaw = req.query.date_from as string | undefined;
-    const dateToRaw = req.query.date_to as string | undefined;
-    
+    //페이지, 한 페이지당 아이템 수, 필터, 날짜 범위(일수) (기본값: 30일)
+    const { page = 1, limit = 10, filter = 'active', date_range = 30 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    //기본값 설정
+    const todayEndKst = getTodayEndKst();//오늘 종료 시간(KST)
+    const defaultStart = getDefaultRangeStartKst(Number(date_range));//기본 범위 시작 시간(KST)
+
+    //유저가 입력한 값
+    const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
+    const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
+
+    //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
     const dateFrom =
       dateFromRaw && dateFromRaw.trim() !== ""
         ? new Date(dateFromRaw)
         : defaultStart;
     const dateTo =
       dateToRaw && dateToRaw.trim() !== ""
-      ? (() => {
-        const d = new Date(dateToRaw);
-        // 날짜만 온 경우(시간이 00:00) → 그날 23:59:59.999
-        const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateToRaw.trim());
-        if (isDateOnly) {
-          d.setHours(23, 59, 59, 999); // 로컬 기준이면 KST 서버에 맞춤
-          // 또는: d.setUTCHours(14, 59, 59, 999); // UTC로 KST 하루 끝 맞출 때
-        }
-        return d;
-      })()
+        ? (() => {
+          const d = new Date(dateToRaw);
+          // 날짜만 온 경우(시간이 00:00) → 그날 23:59:59.999
+          const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateToRaw.trim());
+          if (isDateOnly) {
+            d.setHours(23, 59, 59, 999); // 로컬 기준이면 KST 서버에 맞춤
+            // 또는: d.setUTCHours(14, 59, 59, 999); // UTC로 KST 하루 끝 맞출 때
+          }
+          return d;
+        })()
         : todayEndKst;
-        
+
     // 잘못된 날짜면 400
     if (Number.isNaN(dateFrom.getTime()) || Number.isNaN(dateTo.getTime())) {
       return res.status(400).json({ success: false, message: "Invalid date" });
     }
 
+    //조회 조건 (날짜 범위)
     const where: any = {
       created_at: {
         gte: dateFrom,
@@ -126,10 +117,9 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       },
     };
 
-    //기본값
-    const { page = 1, limit = 10, filter = 'active' } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
 
+
+    //조회 조건 (활성화 여부)
     if (filter === 'active') {
       where.is_active = "Y";
     } else if (filter === 'inactive') {
@@ -164,20 +154,36 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
 export const deleteUserReport = async (req: Request, res: Response): Promise<Response> => {
   try {
     const id = parseInt(req.body.id);
+
+    //유효성 검사
     const report = await prismaClient.report.findUnique({
       where: { id: BigInt(id) },
     });
+    //없는 항목일 경우
     if (!report) {
-      return res.status(404).json({ success: false, message: "Report not found" });
+      return res.status(404).json({ success: false, message: "항목을 찾을 수 없습니다!" });
     }
+    //유효성 검사
+    const is_active = await prismaClient.report.findUnique({
+      where: {
+        id: BigInt(id),
+        is_active: "N"
+      },
+    });
+    //이미 삭제되었을 경우
+    if (is_active) {
+      return res.status(400).json({ success: false, message: "이미 삭제된 항목입니다!" });
+    }
+
+    //삭제 로직 (is_active를 N으로 변경)
     await prismaClient.report.update({
       where: { id: BigInt(id) },
       data: { is_active: "N" },
-    });
-    return res.status(200).json({ success: true, message: "Report deleted successfully" });
+    })
+    return res.status(200).json({ success: true, message: "삭제되었습니다!" });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res.status(500).json({ success: false, message: "삭제에 실패했습니다!" });
   }
 };
 
@@ -185,42 +191,213 @@ export const deleteUserReport = async (req: Request, res: Response): Promise<Res
 
 
 /** 피드백 목록 조회(필터 별 조회) 필터: 전체(최신순), 동네 구역별, 활성화 여부 */
-export const getFeedbackList = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const getFeedbackList = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    //페이지, 한 페이지당 아이템 수, 필터, 날짜 범위(일수) (기본값: 30일)
+    const { page = 1, limit = 10, filter = 'active', date_range = 30 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    //기본값 설정
+    const todayEndKst = getTodayEndKst();//오늘 종료 시간(KST) 23시 59분 59초
+    const defaultStart = getDefaultRangeStartKst(Number(date_range));//기본 범위 시작 시간(KST)
+
+    //날짜 범위 시작 시간, 날짜 범위 종료 시간 (입력값이 있을 경우)
+    const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
+    const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
+
+    //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
+    const dateFrom =
+      dateFromRaw && dateFromRaw.trim() !== ""
+        ? new Date(dateFromRaw)
+        : defaultStart;
+    const dateTo =
+      dateToRaw && dateToRaw.trim() !== ""
+        ? new Date(dateToRaw)
+        : todayEndKst;
+
+    //조회 조건 설정 (날짜 범위)
+    const where: any = {
+      created_at: {
+        gte: dateFrom,
+        lte: dateTo,
+      },
+    };
+
+    //조회 조건 설정 (활성화 여부)
+    if (filter === 'active') {
+      where.is_active = "Y";
+    } else if (filter === 'inactive') {
+      where.is_active = "N";
+    }
+
+    const feedbacks = await prismaClient.feedback.findMany({
+      where,
+      skip,
+      take: Number(limit),
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+    return res.status(200).json({
+      success: true,
+      data: feedbacks,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "피드백 목록 조회에 실패했습니다!" });
+  }
 };
 
-/** 피드백 상세 조회 */
-export const getFeedbackDetail = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
 
 /** 피드백 삭제(비활성화) */
-export const deleteFeedback = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const deleteFeedback = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const id = parseInt(req.body.id);
+
+    //유효성 검사
+    const feedback = await prismaClient.feedback.findUnique({
+      where: { id: BigInt(id) },
+    });
+    //없는 항목일 경우
+    if (!feedback) {
+      return res.status(404).json({ success: false, message: "항목을 찾을 수 없습니다!" });
+    }
+    //유효성 검사
+    const is_active = await prismaClient.feedback.findUnique({
+      where: {
+        id: BigInt(id),
+        is_active: "N"
+      },
+    });
+    //이미 삭제되었을 경우
+    if (is_active) {
+      return res.status(400).json({ success: false, message: "이미 삭제된 항목입니다!" });
+    }
+
+    //삭제 로직 (is_active를 N으로 변경)
+    await prismaClient.feedback.update({
+      where: { id: BigInt(id) },
+      data: { is_active: "N" },
+    })
+    return res.status(200).json({ success: true, message: "삭제되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "삭제에 실패했습니다!" });
+  }
 };
 
 
 /** 도시 행사 목록 조회 */
-export const getCityEvents = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const getCityEvents = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const cityEvents = await prismaClient.city_events.findMany();
+    return res.status(200).json({ success: true, data: cityEvents });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "도시 행사 목록 조회에 실패했습니다!" });
+  }
 };
 
-/** 도시 행사 상세 조회 */
-export const getCityEventDetail = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
 
 /** 도시 행사 등록 */
-export const createCityEvent = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const createCityEvent = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { type, title, description, lat, lng, start_at, end_at } = req.body;
+
+    //유효성 검사
+    if (!type || !title || !description || !lat || !lng || !start_at || !end_at) {
+      return res.status(400).json({ success: false, message: "입력값을 모두 채워주세요!" });
+    }
+
+    //유저가 입력한 값
+    const dateFromRaw = req.query.start_at as string | undefined;//날짜 범위 시작 시간
+    const dateToRaw = req.query.end_at as string | undefined;//날짜 범위 종료 시간
+
+    const dateFrom =
+      dateFromRaw && dateFromRaw.trim() !== ""
+        ? new Date(dateFromRaw)
+        : new Date();
+    const dateTo =
+      dateToRaw && dateToRaw.trim() !== ""
+        ? new Date(dateToRaw)
+        : new Date();
+
+    await prismaClient.city_events.create({
+      data: { type, title, description, lat, lng, 
+        start_at: dateFrom, end_at: dateTo, created_at: new Date() },
+    })
+    return res.status(200).json({ success: true, message: "등록되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "등록에 실패했습니다!" });
+  }
 };
 
 /** 도시 행사 수정 */
-export const updateCityEvent = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const updateCityEvent = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id, type, title, description, lat, lng, start_at, end_at, created_at } = req.body;
+    
+    //유효성 검사
+    const cityEvent = await prismaClient.city_events.findUnique({
+      where: { id: BigInt(id) },
+    });
+    //없는 항목일 경우
+    if (!cityEvent) {
+      return res.status(404).json({ success: false, message: "항목을 찾을 수 없습니다!" });
+    }
+
+        //유저가 입력한 값
+        const dateFromRaw = req.query.start_at as string | undefined;//날짜 범위 시작 시간
+        const dateToRaw = req.query.end_at as string | undefined;//날짜 범위 종료 시간
+    
+        const dateFrom =
+          dateFromRaw && dateFromRaw.trim() !== ""
+            ? new Date(dateFromRaw)
+            : new Date();
+        const dateTo =
+          dateToRaw && dateToRaw.trim() !== ""
+            ? new Date(dateToRaw)
+            : new Date();
+
+    //수정 로직
+    await prismaClient.city_events.update({
+      where: { id: BigInt(id) },
+      data: { type, title, description, lat, lng, 
+        start_at: dateFrom, end_at: dateTo },
+    })
+    return res.status(200).json({ success: true, message: "수정되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "수정에 실패했습니다!" });
+  }
 };
 
 /** 도시 행사 삭제 */
-export const deleteCityEvent = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const deleteCityEvent = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const id = parseInt(req.body.id);
+
+    //유효성 검사
+    const cityEvent = await prismaClient.city_events.findUnique({
+      where: { id: BigInt(id) },
+    });
+    //없는 항목일 경우
+    if (!cityEvent) {
+      return res.status(404).json({ success: false, message: "항목을 찾을 수 없습니다!" });
+    }
+    //삭제 로직
+    await prismaClient.city_events.delete({
+      where: { id: BigInt(id) },
+    })
+    return res.status(200).json({ success: true, message: "삭제되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "삭제에 실패했습니다!" });
+  }
 };
+
+/** 신규 마커 생성 */
+export const createMarker = async (req: Request, res: Response): Promise<void> => {
+  // TODO: 구현 필요
+}
