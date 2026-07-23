@@ -1,4 +1,3 @@
-// Maps existing MariaDB tables from DB.txt — do NOT migrate/alter schema.
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,129 +7,152 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model city_events {
+  id          BigInt    @id @default(autoincrement())
+  type        String?   @db.VarChar(20)
+  title       String?   @db.VarChar(100)
+  description String?   @db.Text
+  lat         Decimal?  @db.Decimal(10, 8)
+  lng         Decimal?  @db.Decimal(11, 8)
+  start_at    DateTime? @db.DateTime(0)
+  end_at      DateTime? @db.DateTime(0)
+  created_by  BigInt?
+  created_at  DateTime? @db.DateTime(0)
+  user        user?     @relation(fields: [created_by], references: [id], map: "FK_city_events_user")
+
+  @@index([created_by], map: "FK_city_events_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model device_tokens {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt?
+  device_token String    @unique(map: "UQ_device_token") @db.VarChar(255)
+  last_lat     Decimal?  @db.Decimal(10, 8)
+  last_lng     Decimal?  @db.Decimal(11, 8)
+  created_at   DateTime? @db.DateTime(0)
+  updated_at   DateTime? @db.DateTime(0)
+  user         user?     @relation(fields: [user_id], references: [id], map: "FK_device_tokens_user")
+
+  @@index([user_id], map: "FK_device_tokens_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model feedback {
+  id             BigInt              @id @default(autoincrement())
+  user_id        BigInt?
+  grid_id        BigInt?
+  safety_feeling String?             @default("보통") @db.VarChar(20)
+  comment        String?             @db.Text
+  img_url        String?             @db.VarChar(255)
+  is_active      feedback_is_active? @default(Y)
+  created_at     DateTime?           @db.DateTime(0)
+  grid           grid?               @relation(fields: [grid_id], references: [id], onDelete: Cascade, map: "FK_feedback_grid")
+  user           user?               @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "FK_feedback_user")
+  feedback_tag   feedback_tag[]      @ignore
+
+  @@index([grid_id], map: "FK_feedback_grid")
+  @@index([user_id], map: "FK_feedback_user")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model feedback_tag {
+  feedback_id BigInt?
+  tag_id      BigInt?
+  feedback    feedback? @relation(fields: [feedback_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_feedback")
+  tag         tag?      @relation(fields: [tag_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_tag")
+
+  @@index([feedback_id], map: "FK_feedback_tag_feedback")
+  @@index([tag_id], map: "FK_feedback_tag_tag")
+  @@ignore
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model grid {
+  id              BigInt            @id @default(autoincrement())
+  grid_row        Int?
+  grid_col        Int?
+  lat             Decimal?          @db.Decimal(10, 8)
+  lng             Decimal?          @db.Decimal(11, 8)
+  infra_count     Int?
+  safety_grade    String?           @db.VarChar(20)
+  feedback        feedback[]
+  infrastructures infrastructures[]
+  report          report[]
+
+  @@unique([grid_row, grid_col], map: "UQ_grid_row_col")
+}
+
+model infrastructures {
+  id      BigInt   @id @default(autoincrement())
+  grid_id BigInt?
+  type    String?  @db.VarChar(50)
+  address String?  @db.VarChar(50)
+  lng     Decimal? @db.Decimal(11, 8)
+  lat     Decimal? @db.Decimal(10, 8)
+  grid    grid?    @relation(fields: [grid_id], references: [id], onDelete: Cascade, map: "FK_infrastructures_grid")
+
+  @@index([grid_id], map: "FK_infrastructures_grid")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model report {
+  id          BigInt            @id @default(autoincrement())
+  user_id     BigInt?
+  grid_id     BigInt?
+  type        String?           @db.VarChar(50)
+  lat         Decimal?          @db.Decimal(10, 8)
+  lng         Decimal?          @db.Decimal(11, 8)
+  description String?           @db.Text
+  img_url     String?           @db.VarChar(255)
+  is_active   report_is_active? @default(Y)
+  created_at  DateTime?         @db.DateTime(0)
+  expire_at   DateTime?         @db.DateTime(0)
+  grid        grid?             @relation(fields: [grid_id], references: [id], onDelete: Cascade, map: "FK_report_grid")
+  user        user?             @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "FK_report_user")
+
+  @@index([grid_id], map: "FK_report_grid")
+  @@index([user_id], map: "FK_report_user")
+}
+
+model tag {
+  id           BigInt         @id @default(autoincrement())
+  name         String?        @db.VarChar(50)
+  feedback_tag feedback_tag[] @ignore
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user {
+  id            BigInt          @id @default(autoincrement())
+  password_hash String?         @db.VarChar(255)
+  email         String?         @db.VarChar(50)
+  nickname      String?         @db.VarChar(50)
+  role          user_role?      @default(NORMAL)
+  created_at    DateTime?       @db.DateTime(0)
+  is_active     user_is_active? @default(Y)
+  city_events   city_events[]
+  device_tokens device_tokens[]
+  feedback      feedback[]
+  report        report[]
+}
+
+enum user_role {
   NORMAL
   ADMIN
 }
 
-enum Yn {
+enum feedback_is_active {
   Y
   N
 }
 
-enum SafetyGrade {
-  불안
-  보통
-  안전
+enum user_is_active {
+  Y
+  N
 }
 
-enum SafetyFeeling {
-  불안
-  보통
-  안전
-}
-
-model User {
-  id           BigInt    @id @default(autoincrement())
-  passwordHash String?   @map("password_hash") @db.VarChar(255)
-  email        String?   @db.VarChar(50)
-  nickname     String?   @db.VarChar(50)
-  role         Role?     @default(NORMAL)
-  createdAt    DateTime? @map("created_at") @db.DateTime(0)
-  isActive     Yn?       @default(Y) @map("is_active")
-
-  reports      Report[]
-  feedbacks    Feedback[]
-  cityEvents   CityEvent[]  @relation("CityEventCreator")
-  deviceTokens DeviceToken[]
-
-  @@map("user")
-}
-
-model Grid {
-  id          BigInt       @id @default(autoincrement())
-  gridRow     Int?         @map("grid_row")
-  gridCol     Int?         @map("grid_col")
-  lat         Decimal?     @db.Decimal(10, 8)
-  lng         Decimal?     @db.Decimal(11, 8)
-  infraCount  Int?         @map("infra_count")
-  safetyGrade SafetyGrade? @map("safety_grade")
-
-  reports   Report[]
-  feedbacks Feedback[]
-
-  @@unique([gridRow, gridCol], map: "UQ_grid_row_col")
-  @@map("grid")
-}
-
-model Report {
-  id          BigInt    @id @default(autoincrement())
-  userId      BigInt?   @map("user_id")
-  gridId      BigInt?   @map("grid_id")
-  type        String?   @db.VarChar(50)
-  lat         Decimal?  @db.Decimal(10, 8)
-  lng         Decimal?  @db.Decimal(11, 8)
-  description String?   @db.Text
-  imgUrl      String?   @map("img_url") @db.VarChar(255)
-  isActive    Yn?       @default(Y) @map("is_active")
-  createdAt   DateTime? @map("created_at") @db.DateTime(0)
-  expireAt    DateTime? @map("expire_at") @db.DateTime(0)
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_report_user")
-  grid Grid? @relation(fields: [gridId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_report_grid")
-
-  @@index([gridId], map: "FK_report_grid")
-  @@index([userId], map: "FK_report_user")
-  @@map("report")
-}
-
-model Feedback {
-  id            BigInt         @id @default(autoincrement())
-  userId        BigInt?        @map("user_id")
-  gridId        BigInt?        @map("grid_id")
-  safetyFeeling SafetyFeeling? @default(보통) @map("safety_feeling")
-  comment       String?        @db.Text
-  imgUrl        String?        @map("img_url") @db.VarChar(255)
-  isActive      Yn?            @default(Y) @map("is_active")
-  createdAt     DateTime?      @map("created_at") @db.DateTime(0)
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_feedback_user")
-  grid Grid? @relation(fields: [gridId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_feedback_grid")
-
-  @@index([userId], map: "FK_feedback_user")
-  @@index([gridId], map: "FK_feedback_grid")
-  @@map("feedback")
-}
-
-model CityEvent {
-  id          BigInt    @id @default(autoincrement())
-  type        String?   @db.VarChar(50)
-  title       String?   @db.VarChar(100)
-  description String?        @db.Text
-  lat         Decimal?       @db.Decimal(10, 8)
-  lng         Decimal?       @db.Decimal(11, 8)
-  startAt     DateTime?      @map("start_at") @db.DateTime(0)
-  endAt       DateTime?      @map("end_at") @db.DateTime(0)
-  createdBy   BigInt?        @map("created_by")
-  createdAt   DateTime?      @map("created_at") @db.DateTime(0)
-
-  creator User? @relation("CityEventCreator", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "FK_city_events_user")
-
-  @@index([createdBy], map: "FK_city_events_user")
-  @@map("city_events")
-}
-
-model DeviceToken {
-  id          BigInt    @id @default(autoincrement())
-  userId      BigInt?   @map("user_id")
-  deviceToken String    @unique(map: "UQ_device_token") @map("device_token") @db.VarChar(255)
-  lastLat     Decimal?  @map("last_lat") @db.Decimal(10, 8)
-  lastLng     Decimal?  @map("last_lng") @db.Decimal(11, 8)
-  createdAt   DateTime? @map("created_at") @db.DateTime(0)
-  updatedAt   DateTime? @map("updated_at") @db.DateTime(0)
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "FK_device_tokens_user")
-
-  @@index([userId], map: "FK_device_tokens_user")
-  @@map("device_tokens")
+enum report_is_active {
+  Y
+  N
 }

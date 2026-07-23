@@ -15,6 +15,7 @@ import feedbackRoutes from './routes/feedback.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
 const app = express();
+const PORT = Number(process.env.PORT) || 4100;
 
 app.use(cors());
 app.use(express.json());
