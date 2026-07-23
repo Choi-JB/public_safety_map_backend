@@ -1,14 +1,6 @@
-// 담당: 피드백/관리자팀
-import { Request, Response } from "express";
+import type { RequestHandler } from 'express';
+import { notImplemented } from '../utils/errors.js';
 
-export const getFeedbacks = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
-
-export const createFeedback = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
-
-export const getFeedbackById = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const stub: RequestHandler = (req, res) => {
+  notImplemented(req, res);
 };

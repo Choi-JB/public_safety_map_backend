@@ -1,6 +1,4 @@
-// 담당: 공통기반
-// 모델은 비워둠 — 추후 `npx prisma db pull`로 채울 예정
-
+// Maps existing MariaDB tables from DB.txt — do NOT migrate/alter schema.
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,4 +6,131 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  NORMAL
+  ADMIN
+}
+
+enum Yn {
+  Y
+  N
+}
+
+enum SafetyGrade {
+  불안
+  보통
+  안전
+}
+
+enum SafetyFeeling {
+  불안
+  보통
+  안전
+}
+
+model User {
+  id           BigInt    @id @default(autoincrement())
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
+  email        String?   @db.VarChar(50)
+  nickname     String?   @db.VarChar(50)
+  role         Role?     @default(NORMAL)
+  createdAt    DateTime? @map("created_at") @db.DateTime(0)
+  isActive     Yn?       @default(Y) @map("is_active")
+
+  reports      Report[]
+  feedbacks    Feedback[]
+  cityEvents   CityEvent[]  @relation("CityEventCreator")
+  deviceTokens DeviceToken[]
+
+  @@map("user")
+}
+
+model Grid {
+  id          BigInt       @id @default(autoincrement())
+  gridRow     Int?         @map("grid_row")
+  gridCol     Int?         @map("grid_col")
+  lat         Decimal?     @db.Decimal(10, 8)
+  lng         Decimal?     @db.Decimal(11, 8)
+  infraCount  Int?         @map("infra_count")
+  safetyGrade SafetyGrade? @map("safety_grade")
+
+  reports   Report[]
+  feedbacks Feedback[]
+
+  @@unique([gridRow, gridCol], map: "UQ_grid_row_col")
+  @@map("grid")
+}
+
+model Report {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt?   @map("user_id")
+  gridId      BigInt?   @map("grid_id")
+  type        String?   @db.VarChar(50)
+  lat         Decimal?  @db.Decimal(10, 8)
+  lng         Decimal?  @db.Decimal(11, 8)
+  description String?   @db.Text
+  imgUrl      String?   @map("img_url") @db.VarChar(255)
+  isActive    Yn?       @default(Y) @map("is_active")
+  createdAt   DateTime? @map("created_at") @db.DateTime(0)
+  expireAt    DateTime? @map("expire_at") @db.DateTime(0)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_report_user")
+  grid Grid? @relation(fields: [gridId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_report_grid")
+
+  @@index([gridId], map: "FK_report_grid")
+  @@index([userId], map: "FK_report_user")
+  @@map("report")
+}
+
+model Feedback {
+  id            BigInt         @id @default(autoincrement())
+  userId        BigInt?        @map("user_id")
+  gridId        BigInt?        @map("grid_id")
+  safetyFeeling SafetyFeeling? @default(보통) @map("safety_feeling")
+  comment       String?        @db.Text
+  imgUrl        String?        @map("img_url") @db.VarChar(255)
+  isActive      Yn?            @default(Y) @map("is_active")
+  createdAt     DateTime?      @map("created_at") @db.DateTime(0)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_feedback_user")
+  grid Grid? @relation(fields: [gridId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "FK_feedback_grid")
+
+  @@index([userId], map: "FK_feedback_user")
+  @@index([gridId], map: "FK_feedback_grid")
+  @@map("feedback")
+}
+
+model CityEvent {
+  id          BigInt    @id @default(autoincrement())
+  type        String?   @db.VarChar(50)
+  title       String?   @db.VarChar(100)
+  description String?        @db.Text
+  lat         Decimal?       @db.Decimal(10, 8)
+  lng         Decimal?       @db.Decimal(11, 8)
+  startAt     DateTime?      @map("start_at") @db.DateTime(0)
+  endAt       DateTime?      @map("end_at") @db.DateTime(0)
+  createdBy   BigInt?        @map("created_by")
+  createdAt   DateTime?      @map("created_at") @db.DateTime(0)
+
+  creator User? @relation("CityEventCreator", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "FK_city_events_user")
+
+  @@index([createdBy], map: "FK_city_events_user")
+  @@map("city_events")
+}
+
+model DeviceToken {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt?   @map("user_id")
+  deviceToken String    @unique(map: "UQ_device_token") @map("device_token") @db.VarChar(255)
+  lastLat     Decimal?  @map("last_lat") @db.Decimal(10, 8)
+  lastLng     Decimal?  @map("last_lng") @db.Decimal(11, 8)
+  createdAt   DateTime? @map("created_at") @db.DateTime(0)
+  updatedAt   DateTime? @map("updated_at") @db.DateTime(0)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "FK_device_tokens_user")
+
+  @@index([userId], map: "FK_device_tokens_user")
+  @@map("device_tokens")
 }

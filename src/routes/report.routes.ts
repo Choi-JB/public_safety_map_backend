@@ -1,12 +1,11 @@
-// 담당: 제보/알림팀
-import { Router } from "express";
+import { Router } from 'express';
+import * as ctrl from '../controllers/report.controller.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { uploadImage } from '../utils/imageUpload.js';
 
 const router = Router();
-
-// TODO: GET /reports — 제보 목록 조회
-// TODO: POST /reports — 제보 등록
-// TODO: GET /reports/:id — 제보 상세 조회
-// TODO: PATCH /reports/:id — 제보 수정
-// TODO: DELETE /reports/:id — 제보 삭제
-
+router.get('/', ctrl.list);
+router.post('/', authMiddleware, uploadImage, ctrl.create);
+router.patch('/:id', authMiddleware, uploadImage, ctrl.update);
+router.delete('/:id', authMiddleware, ctrl.remove);
 export default router;
