@@ -1,14 +1,11 @@
-// 담당: 제보/알림팀
-import { Request, Response } from "express";
+import type { RequestHandler } from 'express';
+import * as deviceService from '../services/device.service.js';
 
-export const registerDevice = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
-
-export const deleteDevice = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
-};
-
-export const getDevices = async (_req: Request, _res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const register: RequestHandler = async (req, res, next) => {
+  try {
+    await deviceService.registerDevice();
+    res.status(501).end();
+  } catch (err) {
+    next(err);
+  }
 };

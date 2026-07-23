@@ -1,11 +1,9 @@
-// 담당: 공통기반
-import { Request, Response, NextFunction } from "express";
+import type { RequestHandler } from 'express';
+import { AppError } from '../utils/errors.js';
 
-export const adminMiddleware = (
-  _req: Request,
-  _res: Response,
-  next: NextFunction
-): void => {
-  // TODO: role 체크 구현 필요
-  next();
+export const adminMiddleware: RequestHandler = (req, _res, next) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return next(new AppError(403, 'FORBIDDEN', 'Admin role required'));
+  }
+  return next();
 };

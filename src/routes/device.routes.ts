@@ -1,10 +1,6 @@
-// 담당: 제보/알림팀
-import { Router } from "express";
+import { Router } from 'express';
+import * as ctrl from '../controllers/device.controller.js';
 
 const router = Router();
-
-// TODO: POST /devices — 디바이스 토큰 등록
-// TODO: DELETE /devices/:id — 디바이스 토큰 삭제
-// TODO: GET /devices — 디바이스 목록 조회
-
+router.post('/register', ctrl.register);
 export default router;
