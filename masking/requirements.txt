@@ -1,3 +1,0 @@
-numpy>=1.24
-# FaceDetectorYN 필요: opencv-contrib-python 권장
-opencv-contrib-python>=4.8

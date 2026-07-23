@@ -1,7 +1,11 @@
-import { Router } from 'express';
-import * as ctrl from '../controllers/auth.controller.js';
+// 담당: 공통기반
+import { Router } from "express";
 
 const router = Router();
-router.post('/signup', ctrl.signup);
-router.post('/login', ctrl.login);
+
+// TODO: POST /auth/login — 로그인
+// TODO: POST /auth/register — 회원가입
+// TODO: POST /auth/refresh — 토큰 갱신
+// TODO: POST /auth/logout — 로그아웃
+
 export default router;

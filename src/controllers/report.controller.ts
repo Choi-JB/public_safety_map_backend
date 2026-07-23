@@ -1,38 +1,22 @@
-import type { RequestHandler } from 'express';
-import * as reportService from '../services/report.service.js';
+// 담당: 제보/알림팀
+import { Request, Response } from "express";
 
-export const list: RequestHandler = async (req, res, next) => {
-  try {
-    const data = await reportService.listReports(req.query as Record<string, unknown>);
-    res.status(200).json(data);
-  } catch (err) {
-    next(err);
-  }
+export const getReports = async (_req: Request, _res: Response): Promise<void> => {
+  // TODO: 구현 필요
 };
 
-export const create: RequestHandler = async (req, res, next) => {
-  try {
-    const data = await reportService.createReport(req.user!.id, req.body, req.file);
-    res.status(201).json(data);
-  } catch (err) {
-    next(err);
-  }
+export const createReport = async (_req: Request, _res: Response): Promise<void> => {
+  // TODO: 구현 필요
 };
 
-export const update: RequestHandler = async (req, res, next) => {
-  try {
-    const data = await reportService.updateReport(req.params.id, req.user!, req.body, req.file);
-    res.status(200).json(data);
-  } catch (err) {
-    next(err);
-  }
+export const getReportById = async (_req: Request, _res: Response): Promise<void> => {
+  // TODO: 구현 필요
 };
 
-export const remove: RequestHandler = async (req, res, next) => {
-  try {
-    await reportService.deleteReport(req.params.id, req.user!);
-    res.status(204).send();
-  } catch (err) {
-    next(err);
-  }
+export const updateReport = async (_req: Request, _res: Response): Promise<void> => {
+  // TODO: 구현 필요
+};
+
+export const deleteReport = async (_req: Request, _res: Response): Promise<void> => {
+  // TODO: 구현 필요
 };

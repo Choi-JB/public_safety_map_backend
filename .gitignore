@@ -3,7 +3,5 @@ dist/
 .env
 uploads/*
 !uploads/.gitkeep
-masking/__pycache__/
-masking/*.onnx
 *.log
 .DS_Store
