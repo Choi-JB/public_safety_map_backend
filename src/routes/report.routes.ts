@@ -1,12 +1,17 @@
 // 담당: 제보/알림팀
 import { Router } from "express";
+import {
+  getReports,
+  createReport,
+  updateReport,
+  deleteReport,
+} from "../controllers/report.controller";
 
 const router = Router();
 
-// TODO: GET /reports — 제보 목록 조회
-// TODO: POST /reports — 제보 등록
-// TODO: GET /reports/:id — 제보 상세 조회
-// TODO: PATCH /reports/:id — 제보 수정
-// TODO: DELETE /reports/:id — 제보 삭제
+router.get("/", getReports);
+router.post("/", createReport);
+router.patch("/:id", updateReport);
+router.delete("/:id", deleteReport);
 
 export default router;
