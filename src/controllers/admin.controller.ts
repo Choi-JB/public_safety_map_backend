@@ -161,8 +161,24 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
 
 /** 유저 신고 삭제 */
 //만료일 이후 에는 자동으로 is_active를 N으로 변경(비활성화) -> 해당부분은 DB이벤트 스케쥴러 사용
-export const deleteUserReport = async (req: Request, res: Response): Promise<void> => {
-  // TODO: 구현 필요
+export const deleteUserReport = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const id = parseInt(req.body.id);
+    const report = await prismaClient.report.findUnique({
+      where: { id: BigInt(id) },
+    });
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found" });
+    }
+    await prismaClient.report.update({
+      where: { id: BigInt(id) },
+      data: { is_active: "N" },
+    });
+    return res.status(200).json({ success: true, message: "Report deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
 
 
