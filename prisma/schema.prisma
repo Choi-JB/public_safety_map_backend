@@ -1,0 +1,11 @@
+// 담당: 공통기반
+// 모델은 비워둠 — 추후 `npx prisma db pull`로 채울 예정
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
