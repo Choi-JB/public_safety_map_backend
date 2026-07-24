@@ -129,18 +129,13 @@ model user {
   password_hash String?         @db.VarChar(255)
   email         String?         @db.VarChar(50)
   nickname      String?         @db.VarChar(50)
-  role          user_role?      @default(NORMAL)
+  role          user_role?      @default(USER)
   created_at    DateTime?       @db.DateTime(0)
   is_active     user_is_active? @default(Y)
   city_events   city_events[]
   device_tokens device_tokens[]
   feedback      feedback[]
   report        report[]
-}
-
-enum user_role {
-  NORMAL
-  ADMIN
 }
 
 enum feedback_is_active {
@@ -161,4 +156,9 @@ enum report_is_active {
 enum city_events_is_active {
   Y
   N
+}
+
+enum user_role {
+  USER
+  ADMIN
 }

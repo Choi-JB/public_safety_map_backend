@@ -72,6 +72,15 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
   }
 };
 
+/** 현재 로그인된 관리자 세션 확인 */
+export const getAdminMe = async (req: Request, res: Response): Promise<Response> => {
+  const admin = (req as any).admin;
+  return res.status(200).json({
+    success: true,
+    data: { id: admin.id, role: admin.role },
+  });
+};
+
 /** 유저 신고 목록 조회(필터 별 조회) 필터: 전체(최신순), 동네 구역별, 활성화 여부 */
 export const getUserReports = async (req: Request, res: Response): Promise<Response> => {
   try {

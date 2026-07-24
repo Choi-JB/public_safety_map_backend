@@ -7,5 +7,6 @@ export const authMiddleware = (
   next: NextFunction
 ): void => {
   // TODO: JWT 검증 구현 필요
+  
   next();
 };

@@ -1,11 +1,17 @@
-// 담당: 공통기반
 import { Request, Response, NextFunction } from "express";
 
 export const adminMiddleware = (
-  _req: Request,
-  _res: Response,
+  req: Request & { session?: { userId?: string; role?: string } },
+  res: Response,
   next: NextFunction
 ): void => {
-  // TODO: role 체크 구현 필요
+  if (!req.session?.userId || req.session.role !== "ADMIN") {
+    res.status(401).json({ success: false, message: "Unauthorized" });
+    return;
+  }
+  (req as any).admin = {
+    id: req.session.userId,
+    role: req.session.role,
+  };
   next();
 };

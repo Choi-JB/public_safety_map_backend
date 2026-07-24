@@ -1,6 +1,6 @@
 // 담당: 공통기반
 import { Router } from "express";
-import { login } from "../controllers/auth.controller";
+import { login, logout } from "../controllers/auth.controller";
 import { register } from "../controllers/auth.controller";
 
 const router = Router();
@@ -10,6 +10,6 @@ router.post("/login", login);
 // TODO: POST /auth/register — 회원가입
 router.post("/register", register);
 // TODO: POST /auth/refresh — 토큰 갱신
-// TODO: POST /auth/logout — 로그아웃
+router.post("/logout", logout);
 
 export default router;
