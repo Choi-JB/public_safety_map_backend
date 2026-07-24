@@ -12,10 +12,15 @@ import {
     createCityEvent,
     updateCityEvent,
     deleteCityEvent,
-
+    getAdminMe,
 } from "../controllers/admin.controller";
 
+import { adminMiddleware } from "../middlewares/admin.middleware";
+
 const router = Router();
+
+// ★ /admin/* 요청마다 세션 검사
+router.use(adminMiddleware);
 
 router.get("/summary", getAdminSummary);
 router.get("/reports", getUserReports);
@@ -26,7 +31,7 @@ router.get("/events", getCityEvents);
 router.post("/create-event", createCityEvent);
 router.post("/update-event", updateCityEvent);
 router.post("/delete-event", deleteCityEvent);
-
+router.get("/me", getAdminMe);
 
 // TODO: GET /admin/users — 사용자 관리
 // TODO: GET /admin/reports — 제보 관리
