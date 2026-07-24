@@ -10,6 +10,8 @@ import reportRoutes from "./routes/report.routes";
 import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
 import deviceRoutes from "./routes/device.routes";
+import cityRoutes from "./routes/city.routes";  // 추가
+
 
 dotenv.config();
 
@@ -22,6 +24,7 @@ app.use(express.json());
 app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/grids", gridRoutes);
+app.use("/city-events", cityRoutes); // 추가
 app.use("/reports", reportRoutes);
 app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
