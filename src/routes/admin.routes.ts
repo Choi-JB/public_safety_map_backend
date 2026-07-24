@@ -1,4 +1,6 @@
 // 담당: 피드백/관리자팀
+// 작성자: 최정봉
+// 내용 : 관리자 관련 라우트
 import { Router } from "express";
 import { 
     getAdminSummary, 
