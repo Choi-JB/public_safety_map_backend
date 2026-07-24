@@ -9,17 +9,19 @@ datasource db {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model city_events {
-  id          BigInt    @id @default(autoincrement())
-  type        String?   @db.VarChar(20)
-  title       String?   @db.VarChar(100)
-  description String?   @db.Text
-  lat         Decimal?  @db.Decimal(10, 8)
-  lng         Decimal?  @db.Decimal(11, 8)
-  start_at    DateTime? @db.DateTime(0)
-  end_at      DateTime? @db.DateTime(0)
+  id          BigInt                 @id @default(autoincrement())
+  type        String?                @db.VarChar(20)
+  title       String?                @db.VarChar(100)
+  description String?                @db.Text
+  lat         Decimal?               @db.Decimal(10, 8)
+  lng         Decimal?               @db.Decimal(11, 8)
+  img_url     String?                @db.VarChar(255)
+  start_at    DateTime?              @db.DateTime(0)
+  end_at      DateTime?              @db.DateTime(0)
   created_by  BigInt?
-  created_at  DateTime? @db.DateTime(0)
-  user        user?     @relation(fields: [created_by], references: [id], map: "FK_city_events_user")
+  created_at  DateTime?              @db.DateTime(0)
+  is_active   city_events_is_active? @default(Y)
+  user        user?                  @relation(fields: [created_by], references: [id], map: "FK_city_events_user")
 
   @@index([created_by], map: "FK_city_events_user")
 }
@@ -50,22 +52,21 @@ model feedback {
   created_at     DateTime?           @db.DateTime(0)
   grid           grid?               @relation(fields: [grid_id], references: [id], onDelete: Cascade, map: "FK_feedback_grid")
   user           user?               @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "FK_feedback_user")
-  feedback_tag   feedback_tag[]      @ignore
+  feedback_tag   feedback_tag[]
 
   @@index([grid_id], map: "FK_feedback_grid")
   @@index([user_id], map: "FK_feedback_user")
 }
 
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model feedback_tag {
-  feedback_id BigInt?
-  tag_id      BigInt?
-  feedback    feedback? @relation(fields: [feedback_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_feedback")
-  tag         tag?      @relation(fields: [tag_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_tag")
+  feedback_id BigInt
+  tag_id      BigInt
+  feedback    feedback @relation(fields: [feedback_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_feedback")
+  tag         tag      @relation(fields: [tag_id], references: [id], onDelete: Cascade, map: "FK_feedback_tag_tag")
 
+  @@id([feedback_id, tag_id])
   @@index([feedback_id], map: "FK_feedback_tag_feedback")
   @@index([tag_id], map: "FK_feedback_tag_tag")
-  @@ignore
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -119,7 +120,7 @@ model report {
 model tag {
   id           BigInt         @id @default(autoincrement())
   name         String?        @db.VarChar(50)
-  feedback_tag feedback_tag[] @ignore
+  feedback_tag feedback_tag[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -153,6 +154,11 @@ enum user_is_active {
 }
 
 enum report_is_active {
+  Y
+  N
+}
+
+enum city_events_is_active {
   Y
   N
 }
