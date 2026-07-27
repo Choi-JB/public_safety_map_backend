@@ -6,12 +6,13 @@ import {
   updateReport,
   deleteReport,
 } from "../controllers/report.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
 router.get("/", getReports);
-router.post("/", createReport);
-router.patch("/:id", updateReport);
-router.delete("/:id", deleteReport);
+router.post("/", authMiddleware, createReport);
+router.patch("/:id", authMiddleware, updateReport);
+router.delete("/:id", authMiddleware, deleteReport);
 
 export default router;

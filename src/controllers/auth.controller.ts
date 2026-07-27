@@ -5,6 +5,8 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
+import { generateRefreshToken, hashRefreshToken } from "../utils/commonUtils";
+import { JWT_SECRET } from "../config/env";
 
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LEN = 8;
@@ -33,7 +35,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 이메일 조회
-    const user = await prisma.user.findFirst({ where:{ email}  });
+    const user = await prisma.user.findFirst({ where: { email } });
     if (!user || !user.password_hash) {
       res.status(401).json({
         success: false,
@@ -81,11 +83,31 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 일반 유저 로그인 처리 - access token은 짧게, refresh token으로 갱신
     const access_token = jwt.sign(
       { role: user.role },
-      process.env.JWT_SECRET || "change-me",
-      { subject: String(user.id), expiresIn: "7d" }
+      JWT_SECRET,
+      { subject: String(user.id), expiresIn: "1h" } //만료시간 1시간
     );
+
+    // refresh token 발급 (원본은 쿠키로, 해시만 DB에 저장)
+    const refreshToken = generateRefreshToken();
+    const refreshExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);//만료시간 14일
+    await prisma.refresh_token.create({
+      data: {
+        user_id: user.id,
+        token_hash: hashRefreshToken(refreshToken),
+        expires_at: refreshExpiresAt,
+        created_at: new Date(),
+      },
+    });
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: false, // 배포 HTTPS면 true
+      sameSite: "lax",
+      maxAge: 14 * 24 * 60 * 60 * 1000,//만료시간 14일
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -103,22 +125,134 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-/** 로그아웃 (관리자 세션 종료) */
-export const logout = async (req: Request, res: Response): Promise<void> => {
-  const session = req.session;
-  if (!session) {
-    res.status(200).json({ success: true, message: "Already logged out" });
-    return;
-  }
-  session.destroy((err) => {
-    if (err) {
-      console.error("[logout]", err);
-      res.status(500).json({ success: false, message: "Internal server error" });
+/** 토큰 갱신 (refresh token 검증 → 로테이션 → 새 access token 발급) */
+export const refresh = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const incomingToken = req.cookies?.refresh_token;
+    //쿠키에 refresh token 유무 확인
+    if (!incomingToken) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
-    res.clearCookie("connect.sid");
-    res.status(200).json({ success: true, message: "Logged out" });
-  });
+
+    //refresh token 해시 생성
+    const tokenHash = hashRefreshToken(incomingToken);
+    //DB에 저장된 refresh token 조회
+    const stored = await prisma.refresh_token.findUnique({
+      where: { token_hash: tokenHash },
+    });
+
+    //DB에 저장된 refresh token 없으면 401 에러
+    if (!stored) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
+    // 재사용 탐지: 이미 폐기된 토큰이 다시 들어옴 → 탈취 의심 → 해당 유저 전체 토큰 폐기
+    if (stored.revoked_at) {
+      await prisma.refresh_token.updateMany({
+        where: { user_id: stored.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      res.clearCookie("refresh_token");
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
+    // 만료 체크 : 만료된 토큰이 들어오면 401 에러
+    if (stored.expires_at < new Date()) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: stored.user_id } });
+
+    if (!user || user.is_active !== "Y") {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
+    // 로테이션: 기존 토큰 폐기 + 새 토큰 발급 (트랜잭션으로 묶어 원자성 보장)
+    const newRefreshToken = generateRefreshToken();
+    const newExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    await prisma.$transaction([
+      prisma.refresh_token.update({
+        where: { id: stored.id },
+        data: { revoked_at: new Date() },
+      }),
+      prisma.refresh_token.create({
+        data: {
+          user_id: user.id,
+          token_hash: hashRefreshToken(newRefreshToken),
+          expires_at: newExpiresAt,
+          created_at: new Date(),
+        },
+      }),
+    ]);
+
+    res.cookie("refresh_token", newRefreshToken, {
+      httpOnly: true,
+      secure: false, // 배포 HTTPS면 true
+      sameSite: "lax",
+      maxAge: 14 * 24 * 60 * 60 * 1000,
+    });
+
+    const access_token = jwt.sign(
+      { role: user.role },
+      JWT_SECRET,
+      { subject: String(user.id), expiresIn: "1h" }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { access_token },
+    });
+
+  } catch (err) {
+    console.error("[refresh]", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+
+};
+
+
+/** 로그아웃 (관리자 세션 종료 + 유저 refresh token 폐기) */
+export const logout = async (req: Request, res: Response): Promise<void> => {
+
+  try {
+    //일반 유저 : refresh token 폐기
+    const incomingToken = req.cookies?.refresh_token;
+    if (incomingToken) {
+      const tokenHash = hashRefreshToken(incomingToken);
+      await prisma.refresh_token.updateMany({
+        where: { token_hash: tokenHash, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      res.clearCookie("refresh_token");
+    }
+
+    //관리자 : 세션 종료
+    const session = req.session;
+    if (!session || !session.userId) {
+      res.status(200).json({ success: true, message: "Already logged out" });
+      return;
+    }
+    session.destroy((err) => {
+      if (err) {
+        console.error("[logout]", err);
+        res.status(500).json({ success: false, message: "Internal server error" });
+        return;
+      }
+      res.clearCookie("connect.sid");
+      res.status(200).json({ success: true, message: "Logged out" });
+    });
+
+  } catch (err) {
+    console.error("[logout]", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+
 };
 
 

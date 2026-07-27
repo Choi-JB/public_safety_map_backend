@@ -1,16 +1,9 @@
 // 담당: 제보/알림팀
 import { Request, Response } from "express";
-import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
 import { toRowCol } from "../utils/gridUtils";
 
 // function toRowCol(lat: number, lng: number) { ... }
-
-
-type AuthUser = {
-  id: bigint;
-  role: string | null;
-};
 
 function toNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
@@ -40,29 +33,6 @@ async function resolveOrCreateGridId(lat: number, lng: number): Promise<bigint |
   return created.id;
 }
 
-async function requireAuthUser(req: Request): Promise<AuthUser | null> {
-  const header = req.headers.authorization || "";
-  const [scheme, token] = header.split(" ");
-  if (scheme !== "Bearer" || !token) return null;
-
-  const secret = process.env.JWT_SECRET;
-  if (!secret) return null;
-
-  try {
-    const payload = jwt.verify(token, secret) as jwt.JwtPayload;
-    const rawId = payload.sub ?? payload.userId ?? payload.id;
-    if (rawId === undefined || rawId === null) return null;
-
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(String(rawId)) },
-    });
-    if (!user || user.is_active !== "Y") return null;
-
-    return { id: user.id, role: user.role };
-  } catch {
-    return null;
-  }
-}
 
 function listItem(row: {
   id: bigint;
@@ -136,7 +106,7 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
 
 export const createReport = async (req: Request, res: Response): Promise<void> => {
   try {
-    const authUser = await requireAuthUser(req);
+    const authUser = (req as any).user;
     if (!authUser) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
@@ -205,7 +175,7 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
 
 export const updateReport = async (req: Request, res: Response): Promise<void> => {
   try {
-    const authUser = await requireAuthUser(req);
+    const authUser = (req as any).user;
     if (!authUser) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
@@ -274,7 +244,7 @@ export const updateReport = async (req: Request, res: Response): Promise<void> =
 
 export const deleteReport = async (req: Request, res: Response): Promise<void> => {
   try {
-    const authUser = await requireAuthUser(req);
+    const authUser = (req as any).user;
     if (!authUser) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
