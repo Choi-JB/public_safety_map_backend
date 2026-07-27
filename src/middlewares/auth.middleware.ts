@@ -3,6 +3,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
+import { JWT_SECRET } from "../config/env";
 
 export const authMiddleware = async (
   req: Request,
@@ -18,15 +19,15 @@ export const authMiddleware = async (
   }
 
   // JWT_SECRET 환경 변수가 없으면 500 에러 반환
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    res.status(500).json({ success: false, message: "Internal server error" });
-    return;
-  }
+  // const secret = process.env.JWT_SECRET;
+  // if (!secret) {
+  //   res.status(500).json({ success: false, message: "Internal server error" });
+  //   return;
+  // }   -> 현재 없으면 아에 서버 가동이 안되게 변경함
 
   try {
     // JWT 토큰 검증
-    const payload = jwt.verify(token, secret) as jwt.JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
     const rawId = payload.sub ?? payload.userId ?? payload.id;
     // rawId가 undefined 또는 null이면 401 에러 반환 (토큰이 유효하지 않을 경우)
     if (rawId === undefined || rawId === null) {

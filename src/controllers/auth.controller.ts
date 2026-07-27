@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
 import { generateRefreshToken, hashRefreshToken } from "../utils/commonUtils";
+import { JWT_SECRET } from "../config/env";
 
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LEN = 8;
@@ -85,13 +86,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // 일반 유저 로그인 처리 - access token은 짧게, refresh token으로 갱신
     const access_token = jwt.sign(
       { role: user.role },
-      process.env.JWT_SECRET || "change-me",
+      JWT_SECRET,
       { subject: String(user.id), expiresIn: "1h" } //만료시간 1시간
     );
 
     // refresh token 발급 (원본은 쿠키로, 해시만 DB에 저장)
     const refreshToken = generateRefreshToken();
-    const refreshExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);//만료시간 14일
     await prisma.refresh_token.create({
       data: {
         user_id: user.id,
@@ -104,7 +105,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       httpOnly: true,
       secure: false, // 배포 HTTPS면 true
       sameSite: "lax",
-      maxAge: 14 * 24 * 60 * 60 * 1000,
+      maxAge: 14 * 24 * 60 * 60 * 1000,//만료시간 14일
     });
 
     res.status(200).json({
@@ -199,7 +200,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     const access_token = jwt.sign(
       { role: user.role },
-      process.env.JWT_SECRET || "change-me",
+      JWT_SECRET,
       { subject: String(user.id), expiresIn: "1h" }
     );
 
