@@ -1,4 +1,4 @@
-# DB 설계서 (v1.1)
+# DB 설계서 (v1.3)
 
 ## 1. 개요
 
@@ -9,7 +9,7 @@
 | 문자셋 | utf8mb4 (utf8mb4_general_ci) |
 | 엔진 | InnoDB |
 
-전체 테이블: `user`, `grid`, `infrastructures`, `report`, `feedback`, `tag`, `feedback_tag`, `city_events`, `device_tokens` (총 9개)
+전체 테이블: `user`, `grid`, `infrastructures`, `report`, `feedback`, `tag`, `feedback_tag`, `city_events`, `device_tokens`, `refresh_token` (총 10개)
 
 ---
 
@@ -26,6 +26,7 @@
 | 실시간 도시정보 저장 | `city_events` 테이블 신규 생성 | FN-01-02 구현을 위해 필요 |
 | 푸시 알림 대상 관리 | `device_tokens` 테이블 신규 생성 | FN-02-02 구현을 위해 필요 (비회원 수신 가능하도록 user_id는 nullable) |
 | 피드백 삭제 방식 | `feedback.is_active` ENUM('Y','N') 추가 | `report`와 동일하게 소프트 삭제 지원 (완전 삭제 대신 이력 보존) |
+| JWT 갱신(refresh) 처리 | `refresh_token` 테이블 신규 생성 (원본 아닌 해시 저장) | access token을 짧게(1시간) 유지하면서도 재로그인 없이 갱신 가능하게 하고, 로그아웃·탈취 의심 시 서버에서 강제 폐기 가능하도록 세션처럼 상태를 저장 |
 
 ---
 
@@ -210,3 +211,28 @@ FN-02-02(긴급 위험 알림)를 실제로 발송하려면 "어떤 기기로, �
 3. 앱은 위치가 바뀔 때마다 주기적으로 `last_lat/last_lng`를 갱신 (API 명세서의 `/devices/register` 참고)
 
 **주의**: `last_lat/last_lng`가 오래된 값이면 실제 위치와 어긋날 수 있음 — 앱에서 일정 주기(예: 위치 변경 시 또는 10분마다)로 갱신 호출하도록 구현 필요
+
+---
+
+### 4.10 refresh_token (JWT 갱신 토큰) — 신규
+
+일반 유저 로그인은 JWT(access token)를 쓰는데, 탈취 위험을 줄이려고 access token 유효기간을 짧게(1시간) 잡음. 대신 매번 재로그인하지 않고도 갱신할 수 있도록 refresh token을 별도 발급하고, 세션처럼 서버(DB)에도 상태를 저장해 로그아웃·탈취 의심 시 강제 폐기가 가능하도록 설계함.
+
+| 컬럼 | 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| id | BIGINT(20) | N | AUTO_INCREMENT | PK |
+| user_id | BIGINT(20) | N | - | FK → user.id (CASCADE) |
+| token_hash | VARCHAR(255) | N | - | refresh token 원본의 SHA-256 해시값 (원본 자체는 저장하지 않음) |
+| expires_at | DATETIME | N | - | 만료 예정일시 (발급/갱신 시점 + 14일) |
+| revoked_at | DATETIME | Y | NULL | 폐기 시각. NULL이면 아직 유효, 값이 있으면 로그아웃/로테이션/탈취탐지로 폐기된 것 |
+| created_at | DATETIME | Y | - | 발급일시 |
+
+제약: `UNIQUE KEY (token_hash)`, FK `user_id` → `user.id` (CASCADE)
+
+**갱신(로테이션) 로직 개요**
+1. 클라이언트는 refresh token 원본을 httpOnly 쿠키로만 보관 (JS로 읽을 수 없어 XSS로부터 상대적으로 안전, access token은 응답 body로 내려 별도 저장)
+2. `POST /auth/refresh` 호출 시 쿠키의 원본 값을 해시해서 `token_hash`와 대조 조회
+3. 조회된 토큰이 이미 `revoked_at`이 있으면(= 이미 사용된 토큰이 재사용됨) 탈취 의심으로 간주해 해당 `user_id`의 살아있는 토큰을 전부 폐기
+4. 정상이면 기존 토큰은 `revoked_at`을 채워 폐기하고 새 토큰을 발급 (**1회용, 사용할 때마다 교체**)
+
+**주의**: 만료/폐기된 지 오래된 행이 계속 쌓이는 구조라, 운영 단계에서는 주기적으로 정리(batch delete)하는 배치 작업이 별도로 필요함 (아직 미구현)

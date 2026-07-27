@@ -77,6 +77,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             id: Number(user.id),
             nickname: user.nickname,
             role: user.role,
+            email: user.email,
           },
         },
       });
@@ -116,6 +117,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           id: Number(user.id),
           nickname: user.nickname,
           role: user.role,
+          email: user.email,
         },
       },
     });
