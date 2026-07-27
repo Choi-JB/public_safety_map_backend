@@ -2,10 +2,10 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
+import { toRowCol } from "../utils/gridUtils";
 
-const ORIGIN_LAT = 33.0;
-const ORIGIN_LNG = 124.5;
-const CELL = 0.005;
+// function toRowCol(lat: number, lng: number) { ... }
+
 
 type AuthUser = {
   id: bigint;
@@ -18,14 +18,8 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function toRowCol(lat: number, lng: number) {
-  return {
-    grid_row: Math.floor((lat - ORIGIN_LAT) / CELL),
-    grid_col: Math.floor((lng - ORIGIN_LNG) / CELL),
-  };
-}
 
-/** gridUtils(공통기반)가 stub이므로 제보 저장용 get-or-create를 여기서 처리 */
+/** gridUtils(공통기반)가 stub이므로 제보 저장용 get-or-create를 여기서 처리 필요시 수정 및 삭제*/
 async function resolveOrCreateGridId(lat: number, lng: number): Promise<bigint | null> {
   const { grid_row, grid_col } = toRowCol(lat, lng);
   const existing = await prisma.grid.findFirst({

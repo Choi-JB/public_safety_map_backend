@@ -2,7 +2,7 @@
 
 const ORIGIN_LAT = 33.0;
 const ORIGIN_LNG = 124.5;
-const CELL = 0.005;
+const CELL = 0.01;
 
 export function toRowCol(lat: number, lng: number) {
   return {

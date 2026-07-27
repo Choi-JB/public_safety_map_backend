@@ -42,7 +42,7 @@
 ```python
 ORIGIN_LAT = 33.0      # 원점 위도 (대한민국 최남단 부근, 임의 고정값)
 ORIGIN_LNG = 124.5     # 원점 경도
-GRID_SIZE = 0.005      # 격자 한 칸 크기 (약 500m)
+GRID_SIZE = 0.01      # 격자 한 칸 크기 (약 500m) -> 0.01(1km) 로 변경
 
 def get_grid_index(lat, lng):
     row = int((lat - ORIGIN_LAT) / GRID_SIZE)
