@@ -19,7 +19,7 @@
 |---|---|---|
 | 비밀번호 저장 | `password_hash` (bcrypt 해시) | 평문 저장 방지 |
 | 제보 만료 처리 | `report.created_at`, `expire_at` 컬럼 | 24시간 자동만료 로직 구현을 위해 필요 |
-| 관리자 등록 제보 구분 | 별도 컬럼 없음 | `user.role`(NORMAL/ADMIN)과 `report.user_id`를 JOIN하면 이미 판별 가능 → 컬럼 중복이라 불필요 |
+| 관리자 등록 제보 구분 | 별도 컬럼 없음 | `user.role`(USER/ADMIN)과 `report.user_id`를 JOIN하면 이미 판별 가능 → 컬럼 중복이라 불필요 |
 | 체감안전도 | `feedback.safety_feeling` ENUM(`불안`,`보통`,`안전`) | 3단계로 고정 |
 | 격자 인덱스 | `grid.grid_row`, `grid.grid_col` 추가 | 아래 3번 참고 |
 | 제보/피드백 사진 첨부 | `report.img_url`, `feedback.img_url` 추가 | API 명세서 작성 중 누락 발견, 기능명세서(사진 첨부 선택)에 맞춰 반영 |
@@ -76,7 +76,7 @@ def get_grid_index(lat, lng):
 | password_hash | VARCHAR(255) | Y | - | bcrypt 해시 저장 |
 | email | VARCHAR(50) | Y | - | 이메일 |
 | nickname | VARCHAR(50) | Y | - | 닉네임 |
-| role | ENUM('NORMAL','ADMIN') | Y | NORMAL | 권한 구분 (관리자 구분에 사용) |
+| role | ENUM('USER','ADMIN') | Y | USER | 권한 구분 (관리자 구분에 사용) |
 | created_at | DATETIME | Y | - | 가입일시 |
 | is_active | ENUM('Y','N') | Y | Y | 계정 활성 여부 |
 

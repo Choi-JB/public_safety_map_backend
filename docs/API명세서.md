@@ -61,11 +61,11 @@
   "nickname": "민지킴"
 }
 ```
-서버는 `password`를 bcrypt로 해시하여 `user.password_hash`에 저장. `role`은 클라이언트가 지정할 수 없고 서버가 항상 `NORMAL`로 고정 (관리자 계정은 회원가입으로 생성 불가, DB에 직접 시딩된 1개 계정만 존재)
+서버는 `password`를 bcrypt로 해시하여 `user.password_hash`에 저장. `role`은 클라이언트가 지정할 수 없고 서버가 항상 `USER`로 고정 (관리자 계정은 회원가입으로 생성 불가, DB에 직접 시딩된 1개 계정만 존재)
 
 **Response 201**
 ```json
-{ "success": true, "data": { "id": 6, "email": "kim.minji@example.com", "nickname": "민지킴", "role": "NORMAL" } }
+{ "success": true, "data": { "id": 6, "email": "kim.minji@example.com", "nickname": "민지킴", "role": "USER" } }
 ```
 
 **에러**
@@ -88,7 +88,7 @@
   "success": true,
   "data": {
     "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "user": { "id": 6, "nickname": "민지킴", "role": "NORMAL" }
+    "user": { "id": 6, "nickname": "민지킴", "role": "USER" }
   }
 }
 ```
