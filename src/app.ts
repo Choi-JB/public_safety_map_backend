@@ -26,16 +26,18 @@ app.use(cors(
   }
 ));
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || "change-me",
-  resave: false,
-  saveUninitialized: false,
+app.use(session({   //"change-me" 나중에 배포 할때 변경해야함!!!!!
+  secret: process.env.SESSION_SECRET || "change-me",  // 세션 데이터를 암호화하기 위한 키
+  resave: false,  // 세션 데이터가 안 바뀌었을 때 스토어에 다시 저장할지 여부
+  saveUninitialized: false,  // 세션 데이터가 초기화되지 않았을 때 스토어에 저장할지 여부
+  rolling: true,    // 매 요청마다 세션 갱신
   cookie: {
     httpOnly: true,
     secure: false,      // 배포 HTTPS면 true
     sameSite: "lax",
-    maxAge: 1000 * 60 * 60 * 8,
+    maxAge: 1000 * 60 * 60 * 2,   // 2시간 후 자동 만료
   },
+  
 }));
 
 app.use("/health", healthRoutes);
