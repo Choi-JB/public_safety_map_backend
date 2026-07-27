@@ -81,16 +81,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-
-    // 일반 유저 로그인 처리
-    // const secret = process.env.JWT_SECRET;
-    // if (!secret) {
-    //   console.error("[login] JWT_SECRET is missing");
-    //   res.status(500).json({ success: false, message: "Internal server error" });
-    //   return;
-    // }
-    
-    // report.controller requireAuthUser: payload.sub | userId | id
     const access_token = jwt.sign(
       { role: user.role },
       process.env.JWT_SECRET || "change-me",
@@ -177,7 +167,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         email,
         nickname,
         password_hash,
-        role: "NORMAL", // 클라이언트 지정 불가
+        role: "USER", // 클라이언트 지정 불가
         is_active: "Y",
         created_at: new Date(),
       },
