@@ -75,9 +75,12 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
 /** 현재 로그인된 관리자 세션 확인 */
 export const getAdminMe = async (req: Request, res: Response): Promise<Response> => {
   const admin = (req as any).admin;
+  if (!admin) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
   return res.status(200).json({
     success: true,
-    data: { id: admin.id, role: admin.role },
+    data: { id: admin.id, nickname: admin.nickname, role: admin.role, email: admin.email },
   });
 };
 
