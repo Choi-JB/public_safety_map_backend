@@ -176,7 +176,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     // 로테이션: 기존 토큰 폐기 + 새 토큰 발급 (트랜잭션으로 묶어 원자성 보장)
     const newRefreshToken = generateRefreshToken();
-    const newExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const newExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); //만료시간 14일
 
     await prisma.$transaction([
       prisma.refresh_token.update({

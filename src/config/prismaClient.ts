@@ -33,6 +33,7 @@ function createPrismaClient(): PrismaClient {
       user: "",
       password: "",
       database: undefined,
+      timezone: '+09:00',
     });
   }
 
