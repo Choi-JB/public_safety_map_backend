@@ -30,7 +30,7 @@ app.use(cors(
 app.use(express.json());
 app.use(cookieParser()); //나중에 쿠키에서 refresh token 읽을 때 사용
 
-app.use(session({   //"change-me" 나중에 배포 할때 변경해야함!!!!!
+app.use(session({  
   secret: SESSION_SECRET,  // 세션 데이터를 암호화하기 위한 키
   resave: false,  // 세션 데이터가 안 바뀌었을 때 스토어에 다시 저장할지 여부
   saveUninitialized: false,  // 세션 데이터가 초기화되지 않았을 때 스토어에 저장할지 여부

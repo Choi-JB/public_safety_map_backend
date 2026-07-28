@@ -6,7 +6,7 @@ import prismaClient from '../config/prismaClient';
 import { getTypes } from '../utils/commonUtils';
 
 // KST 시간 관련 유틸리티 함수 (오늘 시작 시간, 오늘 종료 시간, 기본 범위 시작 시간)
-import { getTodayStartKst, getTodayEndKst, getDefaultRangeStartKst } from '../utils/dateUtils';
+import { getTodayStartKst, getTodayEndKst, getDefaultRangeStartKst, parseDateStartKst, parseDateEndKst } from '../utils/dateUtils';
 
 //bigint serializer 에러 바로 bigint를 문자로 리턴
 (BigInt.prototype as any).toJSON = function () {
@@ -100,23 +100,16 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
     const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
     const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
 
+
+    //console.log("req: ", dateFromRaw, dateToRaw);
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
     const dateFrom =
       dateFromRaw && dateFromRaw.trim() !== ""
-        ? new Date(dateFromRaw)
+        ? parseDateStartKst(dateFromRaw)
         : defaultStart;
     const dateTo =
       dateToRaw && dateToRaw.trim() !== ""
-        ? (() => {
-          const d = new Date(dateToRaw);
-          // 날짜만 온 경우(시간이 00:00) → 그날 23:59:59.999
-          const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateToRaw.trim());
-          if (isDateOnly) {
-            d.setHours(23, 59, 59, 999); // 로컬 기준이면 KST 서버에 맞춤
-            // 또는: d.setUTCHours(14, 59, 59, 999); // UTC로 KST 하루 끝 맞출 때
-          }
-          return d;
-        })()
+        ? parseDateEndKst(dateToRaw)
         : todayEndKst;
 
     // 잘못된 날짜면 400
@@ -124,6 +117,7 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       return res.status(400).json({ success: false, message: "Invalid date" });
     }
 
+    //console.log("parsed date: ", dateFrom, "dateTo: ", dateTo);
     //조회 조건 (날짜 범위)
     const where: any = {
       created_at: {
@@ -162,6 +156,7 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
 
     const reportTypes = await getTypes("report");
 
+    //console.log(reports);
     return res.status(200).json({
       success: true,
       data: reports,
