@@ -40,6 +40,7 @@ export const getCityEvents = async (
 
     const rows = await prisma.city_events.findMany({
       where: {
+        is_active: "Y",  // 지도에 is_active가 n인 것이 출력되어서 추가
         lat: { gte: minLat, lte: maxLat },
         lng: { gte: minLng, lte: maxLng },
         end_at: { gt: now },
