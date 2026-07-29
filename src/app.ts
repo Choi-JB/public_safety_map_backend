@@ -14,6 +14,7 @@ import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
 import deviceRoutes from "./routes/device.routes";
 import cityRoutes from "./routes/city.routes";  // 추가
+import infraRoutes from "./routes/infra.routes";
 
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/grids", gridRoutes);
 app.use("/city-events", cityRoutes); // 추가
+app.use("/infrastructures", infraRoutes);
 app.use("/reports", reportRoutes);
 app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
