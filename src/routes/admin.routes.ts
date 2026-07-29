@@ -13,6 +13,8 @@ import {
     updateCityEvent,
     deleteCityEvent,
     getAdminMe,
+    restoreUserReport,
+    restoreCityEvent,
 } from "../controllers/admin.controller";
 
 import { adminMiddleware } from "../middlewares/admin.middleware";
@@ -25,12 +27,14 @@ router.use(adminMiddleware);
 router.get("/summary", getAdminSummary);
 router.get("/reports", getUserReports);
 router.post("/delete-report", deleteUserReport);
+router.post("/restore-report", restoreUserReport);
 router.get("/feedbacks", getFeedbackList);
 router.post("/delete-feedback", deleteFeedback);
 router.get("/events", getCityEvents);
 router.post("/create-event", createCityEvent);
 router.post("/update-event", updateCityEvent);
 router.post("/delete-event", deleteCityEvent);
+router.post("/restore-event", restoreCityEvent);
 router.get("/me", getAdminMe);
 
 // TODO: GET /admin/users — 사용자 관리
