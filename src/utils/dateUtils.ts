@@ -59,3 +59,9 @@ export function parseDateEndKst(raw: string): Date {
   }
   return parseWallClockAsUtc(s);
 }
+
+
+/** Prisma → DATETIME에 KST 벽시계로 저장할 때 사용 */
+export function toKstWallClock(date = new Date()): Date {
+  return new Date(date.getTime() + KST_OFFSET_MS);
+}

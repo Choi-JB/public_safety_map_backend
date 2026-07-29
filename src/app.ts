@@ -37,7 +37,7 @@ app.use(session({
   rolling: true,    // 매 요청마다 세션 갱신
   cookie: {
     httpOnly: true,
-    secure: false,      // 배포 HTTPS면 true
+    secure: false,      // 배포할 때는 true, 개발할 때는 false
     sameSite: "lax",
     maxAge: 1000 * 60 * 60 * 2,   // 2시간 후 자동 만료
   },
