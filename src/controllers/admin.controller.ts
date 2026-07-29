@@ -354,7 +354,6 @@ export const deleteFeedback = async (req: Request, res: Response): Promise<Respo
       where: { id: BigInt(id) },
       data: {
         is_active: "N",
-        deleted_at: toKstWallClock(),
       },
     })
     return res.status(200).json({ success: true, message: "삭제되었습니다!" });
@@ -421,16 +420,16 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
       where.is_active = "N";
     }
 
-    const orderBy: any = filter === "inactive"
-        ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
-        : { deleted_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
     const cityEventTypes = await getTypes("city_events");
     const cityEvents = await prismaClient.city_events.findMany({
       where,
       skip,
       take: Number(limit),
-      orderBy,
+      orderBy: [
+        { is_active: "desc" },   // N → Y
+        { created_at: "desc" },  // 같은 상태끼리는 최신순
+      ],
       include: {
         user: {
           select: {
@@ -450,7 +449,7 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
 /** 도시 행사 등록 */
 export const createCityEvent = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { type, title, description, lat, lng, start_at, end_at } = req.body;
+    const { id, type, title, description, lat, lng, start_at, end_at } = req.body;
 
     //유효성 검사
     if (!type || !title || !description || !lat || !lng || !start_at || !end_at) {
@@ -464,16 +463,26 @@ export const createCityEvent = async (req: Request, res: Response): Promise<Resp
     const dateFrom =
       dateFromRaw && dateFromRaw.trim() !== ""
         ? new Date(dateFromRaw)
-        : new Date();
+        : toKstWallClock();
     const dateTo =
       dateToRaw && dateToRaw.trim() !== ""
         ? new Date(dateToRaw)
-        : new Date();
+        : toKstWallClock();
+
+    const created_by = await prismaClient.user.findUnique({
+      where: { id: BigInt(id) },
+      select: {
+        id: true,
+      },
+    });
+    if (!created_by) {
+      return res.status(404).json({ success: false, message: "등록자를 찾을 수 없습니다!" });
+    }
 
     await prismaClient.city_events.create({
       data: {
-        type, title, description, lat, lng,
-        start_at: dateFrom, end_at: dateTo, created_at: new Date()
+        type, title, description, lat, lng, created_by: created_by.id,
+        start_at: dateFrom, end_at: dateTo, created_at: toKstWallClock()
       },
     })
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
@@ -554,8 +563,7 @@ export const deleteCityEvent = async (req: Request, res: Response): Promise<Resp
     await prismaClient.city_events.update({
       where: { id: BigInt(id) },
       data: {
-        is_active: "N",
-        deleted_at: toKstWallClock(),
+        is_active: "N"
       },
     })
     return res.status(200).json({ success: true, message: "삭제되었습니다!" });
@@ -593,7 +601,7 @@ export const restoreCityEvent = async (req: Request, res: Response): Promise<Res
     //복구 로직 (is_active를 Y으로 변경)
     await prismaClient.city_events.update({
       where: { id: BigInt(id) },
-      data: { is_active: "Y", deleted_at: null },
+      data: { is_active: "Y" },
     })
     return res.status(200).json({ success: true, message: "복구되었습니다!" });
   } catch (error) {

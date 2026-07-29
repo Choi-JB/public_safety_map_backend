@@ -21,7 +21,6 @@ model city_events {
   created_by  BigInt?
   created_at  DateTime?              @db.DateTime(0)
   is_active   city_events_is_active? @default(Y)
-  deleted_at  DateTime?              @db.DateTime(0)
   user        user?                  @relation(fields: [created_by], references: [id], map: "FK_city_events_user")
 
   @@index([created_by], map: "FK_city_events_user")
