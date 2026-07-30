@@ -1,2 +1,34 @@
 // 담당: 제보/알림팀
-// 이미지 업로드는 추후 협의 후 구현
+import { randomUUID } from "crypto";
+import fs from "fs";
+import multer from "multer";
+import path from "path";
+
+export const IMAGE_UPLOAD_DIR = path.join(process.cwd(), "uploads", "img");
+
+fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, callback) => {
+    callback(null, IMAGE_UPLOAD_DIR);
+  },
+  filename: (_req, file, callback) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    callback(null, `${Date.now()}-${randomUUID()}${extension}`);
+  },
+});
+
+export const imageUpload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (!file.mimetype.startsWith("image/")) {
+      callback(new Error("이미지 파일만 업로드할 수 있습니다."));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
