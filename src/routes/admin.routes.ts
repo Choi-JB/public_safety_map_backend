@@ -15,6 +15,7 @@ import {
     getAdminMe,
     restoreUserReport,
     restoreCityEvent,
+    getGridId,
 } from "../controllers/admin.controller";
 
 import { adminMiddleware } from "../middlewares/admin.middleware";
@@ -36,6 +37,7 @@ router.post("/update-event", updateCityEvent);
 router.post("/delete-event", deleteCityEvent);
 router.post("/restore-event", restoreCityEvent);
 router.get("/me", getAdminMe);
+router.get("/grid-id", getGridId);
 
 // TODO: GET /admin/users — 사용자 관리
 // TODO: GET /admin/reports — 제보 관리

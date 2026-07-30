@@ -136,8 +136,8 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
     }
 
     const orderBy = filter === "inactive"
-    ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
-    : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
+      ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
+      : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
 
     const reports = await prismaClient.report.findMany({
@@ -171,6 +171,40 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       return res.status(400).json({ success: false, message: "유효하지 않은 요청입니다." });
     }
     return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/** 유저 신고(제보) 등록 */
+export const createUserReport = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id, type, title, description, grid_id,lat, lng } = req.body;
+    if (!id || !type || !title || !description || !grid_id || !lat || !lng) {
+      return res.status(400).json({ success: false, message: "입력값을 모두 채워주세요!" });
+    }
+    const grid = await prismaClient.grid.findUnique({
+      where: { id: BigInt(grid_id) },
+    });
+    if (!grid) {
+      return res.status(404).json({ success: false, message: "그리드를 찾을 수 없습니다!" });
+    }
+    const created_by = await prismaClient.user.findUnique({
+      where: { id: BigInt(id) },
+      select: {
+        id: true,
+      },
+    });
+    if (!created_by) {
+      return res.status(404).json({ success: false, message: "등록자를 찾을 수 없습니다!" });
+    }
+    await prismaClient.report.create({
+      data: {
+        id, type, title, description, grid_id: grid.id, lat, lng, created_at: toKstWallClock()
+      },
+    })
+    return res.status(200).json({ success: true, message: "등록되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "등록에 실패했습니다!" });
   }
 };
 
@@ -405,7 +439,7 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
 
     //조회 조건 (날짜 범위)
     const where: any = {
-      created_at: {
+      start_at: {
         gte: dateFrom,
         lte: dateTo,
       },
@@ -616,3 +650,30 @@ export const createMarker = async (req: Request, res: Response): Promise<void> =
 }
 
 
+export const getGridId = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const ORIGIN_LAT = 33.0;
+    const ORIGIN_LNG = 124.5;
+    const CELL = 0.01;  //-> 격자 1km로 필요시 수정 
+    const BATCH_SIZE = 500;
+
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const row = Math.floor((lat - ORIGIN_LAT) / CELL)
+    const col = Math.floor((lng - ORIGIN_LNG) / CELL)
+    const gridId = await prismaClient.grid.findUnique({
+      where: { grid_row_grid_col: { grid_row: row, grid_col: col } },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!gridId) {
+      return res.status(200).json({ success: true, message: "그리드 아이디가 없는 곳입니다." });
+    }
+    return res.status(200).json({ success: true, data: gridId.id });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "그리드 아이디 조회에 실패했습니다!" });
+  }
+};
