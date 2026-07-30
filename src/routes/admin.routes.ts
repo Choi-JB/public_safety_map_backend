@@ -4,14 +4,20 @@
 import { Router } from "express";
 import { 
     getAdminSummary, 
+
+
     getUserReports, 
+    createUserReport,
     deleteUserReport, 
+
     getFeedbackList, 
     deleteFeedback,
+
     getCityEvents,
     createCityEvent,
     updateCityEvent,
     deleteCityEvent,
+
     getAdminMe,
     restoreUserReport,
     restoreCityEvent,
@@ -27,6 +33,7 @@ router.use(adminMiddleware);
 
 router.get("/summary", getAdminSummary);
 router.get("/reports", getUserReports);
+router.post("/create-report", createUserReport);
 router.post("/delete-report", deleteUserReport);
 router.post("/restore-report", restoreUserReport);
 router.get("/feedbacks", getFeedbackList);

@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { SESSION_SECRET } from "./config/env";
 
 import healthRoutes from "./routes/health.routes";
@@ -15,6 +16,7 @@ import adminRoutes from "./routes/admin.routes";
 import deviceRoutes from "./routes/device.routes";
 import cityRoutes from "./routes/city.routes";  // 추가
 import infraRoutes from "./routes/infra.routes";
+import uploadRoutes from "./routes/upload.routes";
 
 
 dotenv.config();
@@ -54,6 +56,10 @@ app.use("/reports", reportRoutes);
 app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
 app.use("/devices", deviceRoutes);
+app.use("/uploads", uploadRoutes);
+
+// 이미지 파일 정적 파일 서비스
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
