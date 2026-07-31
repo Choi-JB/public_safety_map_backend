@@ -206,7 +206,9 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
     await prismaClient.report.create({
       data: {
         user_id: created_by.id,
-        type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, created_at: toKstWallClock()
+        type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, 
+        created_at: toKstWallClock(),
+        expire_at: toKstWallClock(new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000)),
       },
     })
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
