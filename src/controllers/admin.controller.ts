@@ -99,7 +99,8 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
     //유저가 입력한 값
     const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
     const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
-
+    const nickname = (req.query.nickname as string | undefined)?.trim();
+    const keyword = (req.query.keyword as string | undefined)?.trim();
 
     //console.log("req: ", dateFromRaw, dateToRaw);
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
@@ -126,13 +127,19 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       },
     };
 
-
-
     //조회 조건 (활성화 여부)
     if (filter === 'active') {
       where.is_active = "Y";
     } else if (filter === 'inactive') {
       where.is_active = "N";
+    }
+
+    //조회 조건 (작성자 닉네임 / 키워드: description)
+    if (nickname) {
+      where.user = { nickname: { contains: nickname } };
+    }
+    if (keyword) {
+      where.description = { contains: keyword };
     }
 
     const orderBy = filter === "inactive"
@@ -198,7 +205,10 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
     }
     await prismaClient.report.create({
       data: {
-        type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, created_at: toKstWallClock()
+        user_id: created_by.id,
+        type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, 
+        created_at: toKstWallClock(),
+        expire_at: toKstWallClock(new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000)),
       },
     })
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
@@ -304,6 +314,8 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 (입력값이 있을 경우)
     const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
     const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
+    const nickname = (req.query.nickname as string | undefined)?.trim();
+    const keyword = (req.query.keyword as string | undefined)?.trim();
 
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
     const dateFrom =
@@ -328,6 +340,14 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
       where.is_active = "Y";
     } else if (filter === 'inactive') {
       where.is_active = "N";
+    }
+
+    //조회 조건 (작성자 닉네임 / 키워드: comment)
+    if (nickname) {
+      where.user = { nickname: { contains: nickname } };
+    }
+    if (keyword) {
+      where.comment = { contains: keyword };
     }
 
     const feedbacks = await prismaClient.feedback.findMany({
@@ -410,6 +430,9 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
     //유저가 입력한 값
     const dateFromRaw = req.query.date_from as string | undefined;//날짜 범위 시작 시간
     const dateToRaw = req.query.date_to as string | undefined;//날짜 범위 종료 시간
+    const nickname = (req.query.nickname as string | undefined)?.trim();
+    const keyword = (req.query.keyword as string | undefined)?.trim();
+    const status = (req.query.status as string | undefined)?.trim();
 
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
     const dateFrom =
@@ -443,10 +466,7 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
       end_at: {
         gte: dateFrom,
       },
-       
     };
-
-
 
     //조회 조건 (활성화 여부)
     if (filter === 'active') {
@@ -455,6 +475,26 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
       where.is_active = "N";
     }
 
+    //조회 조건 (진행 상태: scheduled | ongoing | ended)
+    const now = new Date();
+    if (status === "scheduled") {
+      // 예정: 아직 시작 전
+      where.AND = [...(where.AND || []), { start_at: { gt: now } }];
+    } else if (status === "ongoing") {
+      // 진행중: 시작됨 & 아직 종료 안 됨
+      where.AND = [...(where.AND || []), { start_at: { lte: now }, end_at: { gte: now } }];
+    } else if (status === "ended") {
+      // 종료: 종료 시각이 지남
+      where.AND = [...(where.AND || []), { end_at: { lt: now } }];
+    }
+
+    //조회 조건 (작성자 닉네임 / 키워드: title)
+    if (nickname) {
+      where.user = { nickname: { contains: nickname } };
+    }
+    if (keyword) {
+      where.title = { contains: keyword };
+    }
 
     const cityEventTypes = await getTypes("city_events");
     const cityEvents = await prismaClient.city_events.findMany({
