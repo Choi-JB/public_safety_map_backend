@@ -59,6 +59,7 @@ export const getCityEvents = async (
         lng: e.lng != null ? Number(e.lng) : null,
         start_at: e.start_at,
         end_at: e.end_at,
+        img_url: e.img_url,
       })),
     });
   } catch (err) {
