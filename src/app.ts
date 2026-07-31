@@ -63,6 +63,16 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+
+  /**
+   * 매일 00:00(Asia/Seoul) 안전등급 배치 스케줄 등록
+   * - 서버가 살아 있는 동안만 동작 (프로세스 종료 시 cron 도 중단)
+   * - 끄려면 .env 에 SCORE_CRON_ENABLED=false
+   * - 동적 import: 스케줄 모듈 로드 실패해도 API 서버는 계속 기동
+   */
+  void import("./jobs/scoreScheduler")
+    .then(({ startScoreCron }) => startScoreCron())
+    .catch((err) => console.error("[score-cron] failed to start:", err));
 });
 
 export default app;
