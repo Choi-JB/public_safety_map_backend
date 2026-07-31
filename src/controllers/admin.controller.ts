@@ -437,14 +437,13 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
 
     //조회 조건 (날짜 범위)
     const where: any = {
-      OR:[
-        {start_at: {
-          lte: dateTo,
-        }},
-        {end_at: {
-          gte: dateFrom,
-        }},
-      ]
+      start_at: {
+        lte: dateTo,
+      },
+      end_at: {
+        gte: dateFrom,
+      },
+       
     };
 
 
@@ -560,7 +559,8 @@ export const updateCityEvent = async (req: Request, res: Response): Promise<Resp
       where: { id: BigInt(id) },
       data: {
         type, title, description, lat, lng,
-        start_at: dateFrom, end_at: dateTo
+        start_at: dateFrom, end_at: dateTo,
+        img_url: img_url || null,
       },
     })
     return res.status(200).json({ success: true, message: "수정되었습니다!" });
