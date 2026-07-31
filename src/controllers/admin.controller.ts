@@ -437,14 +437,13 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
 
     //조회 조건 (날짜 범위)
     const where: any = {
-      OR:[
-        {start_at: {
-          lte: dateTo,
-        }},
-        {end_at: {
-          gte: dateFrom,
-        }},
-      ]
+      start_at: {
+        lte: dateTo,
+      },
+      end_at: {
+        gte: dateFrom,
+      },
+       
     };
 
 
