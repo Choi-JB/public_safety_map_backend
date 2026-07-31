@@ -172,23 +172,30 @@ export const detail = async (req: Request, res: Response): Promise<void> => {
     }));
 
     // 5) 태그 (feedback_tag 가 Prisma @@ignore → raw SQL)
-    let tags: string[] = [];
+    let tags: { name: string; count: number }[] = [];
+    let top_tag: string | null = null;
     try {
-      const tagRows = await prisma.$queryRaw<Array<{ name: string | null }>>`
-        SELECT DISTINCT t.name AS name
+      const tagRows = await prisma.$queryRaw<Array<{ name: string | null; cnt: bigint }>>`
+        SELECT
+          t.name AS name,
+          COUNT(*) AS cnt
         FROM feedback f
         INNER JOIN feedback_tag ft ON ft.feedback_id = f.id
         INNER JOIN tag t ON t.id = ft.tag_id
         WHERE f.grid_id = ${gridId}
           AND f.is_active = 'Y'
           AND t.name IS NOT NULL
+        GROUP BY t.name
+        ORDER BY cnt DESC, t.name ASC
       `;
-      tags = tagRows
-        .map((r) => r.name)
-        .filter((n): n is string => !!n);
+    tags = tagRows
+      .filter((r): r is { name: string; cnt: bigint } => !!r.name)
+      .map((r) => ({ name: r.name, count: Number(r.cnt) }));
+    top_tag = tags[0]?.name ?? null;
     } catch (tagErr) {
       console.warn("[detail] tags query skipped:", tagErr);
       tags = [];
+      top_tag = null;
     }
 
     res.status(200).json({
@@ -200,9 +207,14 @@ export const detail = async (req: Request, res: Response): Promise<void> => {
         safety_grade: grid.safety_grade,
         infra_count: grid.infra_count,
         tags,
+        top_tag,
         safety_feeling_ratio,
         recent_feedbacks,
         active_reports,
+        feedback_count: feedbacks.length,
+        participant_count: new Set(
+          feedbacks.map((f) => f.user_id).filter((id) => id != null)
+        ).size,
       },
     });
   } catch (err) {
