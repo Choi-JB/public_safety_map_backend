@@ -136,8 +136,8 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
     }
 
     const orderBy = filter === "inactive"
-    ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
-    : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
+      ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
+      : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
 
     const reports = await prismaClient.report.findMany({
@@ -174,6 +174,40 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
   }
 };
 
+/** 유저 신고(제보) 등록 */
+export const createUserReport = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id, type, description, img_url, grid_id,lat, lng } = req.body;
+    if (!id || !type || !description || !grid_id || !lat || !lng) {
+      return res.status(400).json({ success: false, message: "입력값을 모두 채워주세요!" });
+    }
+    const grid = await prismaClient.grid.findUnique({
+      where: { id: BigInt(grid_id) },
+    });
+    if (!grid) {
+      return res.status(404).json({ success: false, message: "그리드를 찾을 수 없습니다!" });
+    }
+    const created_by = await prismaClient.user.findUnique({
+      where: { id: BigInt(id) },
+      select: {
+        id: true,
+      },
+    });
+    if (!created_by) {
+      return res.status(404).json({ success: false, message: "등록자를 찾을 수 없습니다!" });
+    }
+    await prismaClient.report.create({
+      data: {
+        type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, created_at: toKstWallClock()
+      },
+    })
+    return res.status(200).json({ success: true, message: "등록되었습니다!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "등록에 실패했습니다!" });
+  }
+};
+
 
 /** 유저 신고(제보) 삭제 */
 //만료일 이후 에는 자동으로 is_active를 N으로 변경(비활성화) -> 해당부분은 DB이벤트 스케쥴러 사용
@@ -206,7 +240,6 @@ export const deleteUserReport = async (req: Request, res: Response): Promise<Res
       where: { id: BigInt(id) },
       data: {
         is_active: "N",
-        expire_at: toKstWallClock(),
       },
 
     })
@@ -247,7 +280,6 @@ export const restoreUserReport = async (req: Request, res: Response): Promise<Re
       where: { id: BigInt(id) },
       data: {
         is_active: "Y",
-        expire_at: null,
       },
     })
     return res.status(200).json({ success: true, message: "복구되었습니다!" });
@@ -406,9 +438,12 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
     //조회 조건 (날짜 범위)
     const where: any = {
       start_at: {
-        gte: dateFrom,
         lte: dateTo,
       },
+      end_at: {
+        gte: dateFrom,
+      },
+       
     };
 
 
@@ -449,7 +484,7 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
 /** 도시 행사 등록 */
 export const createCityEvent = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { id, type, title, description, lat, lng, start_at, end_at } = req.body;
+    const { id, type, title, description, lat, lng, start_at, end_at, img_url } = req.body;
 
     //유효성 검사
     if (!type || !title || !description || !lat || !lng || !start_at || !end_at) {
@@ -482,7 +517,7 @@ export const createCityEvent = async (req: Request, res: Response): Promise<Resp
     await prismaClient.city_events.create({
       data: {
         type, title, description, lat, lng, created_by: created_by.id,
-        start_at: dateFrom, end_at: dateTo, created_at: toKstWallClock()
+        start_at: dateFrom, end_at: dateTo, created_at: toKstWallClock(), img_url: img_url || null
       },
     })
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
@@ -495,7 +530,7 @@ export const createCityEvent = async (req: Request, res: Response): Promise<Resp
 /** 도시 행사 수정 */
 export const updateCityEvent = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { id, type, title, description, lat, lng, start_at, end_at, created_at } = req.body;
+    const { id, type, title, description, lat, lng, start_at, end_at, created_at, img_url } = req.body;
 
     //유효성 검사
     const cityEvent = await prismaClient.city_events.findUnique({
@@ -524,7 +559,8 @@ export const updateCityEvent = async (req: Request, res: Response): Promise<Resp
       where: { id: BigInt(id) },
       data: {
         type, title, description, lat, lng,
-        start_at: dateFrom, end_at: dateTo
+        start_at: dateFrom, end_at: dateTo,
+        img_url: img_url || null,
       },
     })
     return res.status(200).json({ success: true, message: "수정되었습니다!" });
@@ -616,3 +652,30 @@ export const createMarker = async (req: Request, res: Response): Promise<void> =
 }
 
 
+export const getGridId = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const ORIGIN_LAT = 33.0;
+    const ORIGIN_LNG = 124.5;
+    const CELL = 0.01;  //-> 격자 1km로 필요시 수정 
+    const BATCH_SIZE = 500;
+
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const row = Math.floor((lat - ORIGIN_LAT) / CELL)
+    const col = Math.floor((lng - ORIGIN_LNG) / CELL)
+    const gridId = await prismaClient.grid.findUnique({
+      where: { grid_row_grid_col: { grid_row: row, grid_col: col } },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!gridId) {
+      return res.status(200).json({ success: true, message: "그리드 아이디가 없는 곳입니다." });
+    }
+    return res.status(200).json({ success: true, data: gridId.id });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "그리드 아이디 조회에 실패했습니다!" });
+  }
+};

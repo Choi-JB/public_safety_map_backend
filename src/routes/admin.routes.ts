@@ -4,17 +4,24 @@
 import { Router } from "express";
 import { 
     getAdminSummary, 
+
+
     getUserReports, 
+    createUserReport,
     deleteUserReport, 
+
     getFeedbackList, 
     deleteFeedback,
+
     getCityEvents,
     createCityEvent,
     updateCityEvent,
     deleteCityEvent,
+
     getAdminMe,
     restoreUserReport,
     restoreCityEvent,
+    getGridId,
 } from "../controllers/admin.controller";
 
 import { adminMiddleware } from "../middlewares/admin.middleware";
@@ -26,6 +33,7 @@ router.use(adminMiddleware);
 
 router.get("/summary", getAdminSummary);
 router.get("/reports", getUserReports);
+router.post("/create-report", createUserReport);
 router.post("/delete-report", deleteUserReport);
 router.post("/restore-report", restoreUserReport);
 router.get("/feedbacks", getFeedbackList);
@@ -36,6 +44,7 @@ router.post("/update-event", updateCityEvent);
 router.post("/delete-event", deleteCityEvent);
 router.post("/restore-event", restoreCityEvent);
 router.get("/me", getAdminMe);
+router.get("/grid-id", getGridId);
 
 // TODO: GET /admin/users — 사용자 관리
 // TODO: GET /admin/reports — 제보 관리
