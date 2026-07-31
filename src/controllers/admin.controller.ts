@@ -559,7 +559,8 @@ export const updateCityEvent = async (req: Request, res: Response): Promise<Resp
       where: { id: BigInt(id) },
       data: {
         type, title, description, lat, lng,
-        start_at: dateFrom, end_at: dateTo
+        start_at: dateFrom, end_at: dateTo,
+        img_url: img_url || null,
       },
     })
     return res.status(200).json({ success: true, message: "수정되었습니다!" });
