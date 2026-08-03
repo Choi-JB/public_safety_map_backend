@@ -10,6 +10,8 @@ import { JWT_SECRET } from "../config/env";
 
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LEN = 8;
+const MAX_FAILED_ATTEMPTS = 5;  //최대 로그인 시도 횟수
+const LOCKOUT_DURATION_MS = 1 * 60 * 1000; // 잠금 시간: 1분
 
 /** 문자열 비어있는지 체크 */
 function isNonEmptyString(v: unknown): v is string {
@@ -52,15 +54,43 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    //로그인 잠금 여부 확인
+    if(user.locked_until && user.locked_until > new Date()) {
+      const remainingMin = Math.ceil(
+        (user.locked_until.getTime() - Date.now()) / 60000
+      );
+      res.status(429).json({
+        success: false,
+        message: `로그인 시도가 너무 많습니다. ${remainingMin}분 후 다시 시도해주세요.`,
+      });
+      return;
+    }
 
     // 비밀번호 검증
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
+      const newCount = user.failed_login_count + 1;
+      const shouldLock = newCount >= MAX_FAILED_ATTEMPTS;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failed_login_count: shouldLock ? 0 : newCount,
+          locked_until: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+        },
+      });
       res.status(401).json({
         success: false,
-        message: "Invalid password",
+        message: `잘못된 비밀번호 입니다. 남은 로그인 횟수: ${MAX_FAILED_ATTEMPTS - newCount} 회`,
       });
       return;
+    }
+
+    //로그인 성공 - 실패 카운트 초기화
+    if(user.failed_login_count > 0) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failed_login_count: 0, locked_until: null },
+      });
     }
 
     // 관리자 로그인 처리
@@ -69,6 +99,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       (req as any).session.userId = String(user.id);
       (req as any).session.role = "ADMIN";
       (req as any).session.nickname = user.nickname ?? undefined;
+      
+      //동시 세션 제한: 이 세션 ID를 "현재 유효한 세션"으로 기록
+      //다른 곳에서 로그인해 있던 이전 세션은 이 값이 바뀌는 순간 자동으로 무효화됨
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { active_session_id: String(req.sessionID) },
+      });
+      
       res.status(200).json({
         success: true,
         data: {
@@ -240,6 +278,12 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       res.status(200).json({ success: true, message: "Already logged out" });
       return;
     }
+    //동시 세션 제한용 기록도 같이 정리
+    await prisma.user.update({
+      where: { id: BigInt(session.userId) },
+      data: { active_session_id: null },
+    });
+
     session.destroy((err) => {
       if (err) {
         console.error("[logout]", err);
@@ -319,6 +363,56 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (err) {
     console.error("[signup]", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+
+/** 비밀번호 변경 */
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const email = isNonEmptyString(req.body.email)
+      ? req.body.email.trim()
+      : "";
+    const password = isNonEmptyString(req.body.password)
+      ? req.body.password
+      : "";
+    const newPassword = isNonEmptyString(req.body.newPassword)
+      ? req.body.newPassword
+      : "";
+
+    //유효성 검사
+    if (!email || !password || !newPassword) {
+      res.status(422).json({
+        success: false,
+        message: "이메일, 비밀번호, 새 비밀번호는 필수 입력 항목입니다.",
+      });
+      return;
+    }
+    
+    //이메일 조회
+    const user = await prisma.user.findFirst({ where: { email } });
+    if (!user || !user.password_hash) {
+      res.status(401).json({ success: false, message: "존재하지 않는 이메일입니다." });
+      return;
+    }
+    
+    //비밀번호 검증
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      res.status(401).json({ success: false, message: "잘못된 비밀번호 입니다." });
+      return;
+    }
+
+    //비밀번호 변경
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password_hash: newPasswordHash },
+    });
+    res.status(200).json({ success: true, message: "비밀번호 변경 완료" });
+  } catch (err) {
+    console.error("[changePassword]", err);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
