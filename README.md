@@ -7,8 +7,13 @@
 2. .env.example을 복사해 .env 생성 후 DATABASE_URL, JWT_SECRET, SESSION_SECRET 값 채우기
    DATABASE_URL 형식: mysql://아이디:비밀번호@호스트:3306/public_safety_map
 3. npx prisma generate
-4. npm run dev
-5. http://localhost:{PORT}/health/db 접속해서 DB 연결 확인
+4. npx prisma generate
+   npx ts-node --transpile-only src/jobs/runScore.ts
+5. cd masking
+   python -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+6. npm run dev
+7. http://localhost:{PORT}/health/db 접속해서 DB 연결 확인
 ```
 
 ## (2) 폴더 구조

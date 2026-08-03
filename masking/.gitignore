@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ML model weights (ensure_model 실행 시 자동 다운로드)
+*.onnx
+*.tflite
+*.task
+*.pt
+*.pth
+
+# 로컬 테스트 산출물
+_tmp_*.jpg
+_tmp_*.png
+*_masked.jpg
+*_masked.png
+
+# Logs
+*.log
