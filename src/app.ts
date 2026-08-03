@@ -17,7 +17,7 @@ import deviceRoutes from "./routes/device.routes";
 import cityRoutes from "./routes/city.routes";  // 추가
 import infraRoutes from "./routes/infra.routes";
 import uploadRoutes from "./routes/upload.routes";
-
+import mypageRoutes from "./routes/mypage.routes";
 
 dotenv.config();
 
@@ -57,7 +57,7 @@ app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
 app.use("/devices", deviceRoutes);
 app.use("/uploads", uploadRoutes);
-
+app.use("/mypage", mypageRoutes);
 // 이미지 파일 정적 파일 서비스
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
