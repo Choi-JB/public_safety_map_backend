@@ -366,3 +366,53 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+
+/** 비밀번호 변경 */
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const email = isNonEmptyString(req.body.email)
+      ? req.body.email.trim()
+      : "";
+    const password = isNonEmptyString(req.body.password)
+      ? req.body.password
+      : "";
+    const newPassword = isNonEmptyString(req.body.newPassword)
+      ? req.body.newPassword
+      : "";
+
+    //유효성 검사
+    if (!email || !password || !newPassword) {
+      res.status(422).json({
+        success: false,
+        message: "이메일, 비밀번호, 새 비밀번호는 필수 입력 항목입니다.",
+      });
+      return;
+    }
+    
+    //이메일 조회
+    const user = await prisma.user.findFirst({ where: { email } });
+    if (!user || !user.password_hash) {
+      res.status(401).json({ success: false, message: "존재하지 않는 이메일입니다." });
+      return;
+    }
+    
+    //비밀번호 검증
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      res.status(401).json({ success: false, message: "잘못된 비밀번호 입니다." });
+      return;
+    }
+
+    //비밀번호 변경
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password_hash: newPasswordHash },
+    });
+    res.status(200).json({ success: true, message: "비밀번호 변경 완료" });
+  } catch (err) {
+    console.error("[changePassword]", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
