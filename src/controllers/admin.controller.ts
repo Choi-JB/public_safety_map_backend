@@ -27,6 +27,7 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
       total_feedbacks,
       feedbacks_today,
       active_city_events,
+      inactive_city_events,
     ] = await Promise.all([
       // 활성 제보만
       prismaClient.report.count({
@@ -53,6 +54,13 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
           end_at: { gte: now },
         },
       }),
+      //종료된 도시정보만
+      prismaClient.city_events.count({
+        where: {
+          is_active: "Y",
+          end_at: { lt: now },
+        },
+      }),
     ]);
     return res.status(200).json({
       success: true,
@@ -62,6 +70,7 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
         total_feedbacks,
         feedbacks_today,
         active_city_events,
+        inactive_city_events,
       },
     });
   } catch (error) {
