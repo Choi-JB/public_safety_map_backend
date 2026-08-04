@@ -49,6 +49,7 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
       // 종료되지 않은 도시정보만 (end_at >= 현재시각)
       prismaClient.city_events.count({
         where: {
+          is_active: "Y",
           end_at: { gte: now },
         },
       }),

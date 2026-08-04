@@ -400,7 +400,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     //비밀번호 검증
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
-      res.status(401).json({ success: false, message: "잘못된 비밀번호 입니다." });
+      res.status(401).json({ success: false, message: "잘못된 비밀번호 입니다.(기존 비밀번호 확인)" });
       return;
     }
 
