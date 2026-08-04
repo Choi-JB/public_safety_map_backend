@@ -41,7 +41,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!user || !user.password_hash) {
       res.status(401).json({
         success: false,
-        message: "Invalid email",
+        message: "존재하지 않는 이메일입니다.",
       });
       return;
     }
@@ -49,7 +49,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (user.is_active !== "Y") {
       res.status(403).json({
         success: false,
-        message: "Account is inactive",
+        message: "비활성화된 계정입니다. 관리자에게 문의해주세요.",
       });
       return;
     }

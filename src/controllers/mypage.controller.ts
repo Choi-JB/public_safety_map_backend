@@ -22,11 +22,13 @@ export const getMypage = async (req: Request, res: Response): Promise<Response> 
     const feedbackCount = await prismaClient.feedback.count({
       where: { user_id: user.id },
     });
-    return res.status(200).json({ success: true, data: {
-      user: user,
-      reportCount: reportCount,
-      feedbackCount: feedbackCount,
-    } });
+    return res.status(200).json({
+      success: true, data: {
+        user: user,
+        reportCount: reportCount,
+        feedbackCount: feedbackCount,
+      }
+    });
   } catch (err) {
     console.error("[getMypage]", err);
     return res.status(500).json({ success: false, message: "Internal server error" });
@@ -42,20 +44,20 @@ export const getMyReportList = async (req: Request, res: Response): Promise<Resp
 
     //내가 제보한 report 목록 조회
     const reports = await prismaClient.report.findMany({
-        where: { user_id: BigInt(req.body.userId) },
-        skip,
-        take: Number(limit),
-        orderBy: {
-          created_at: 'desc',
-        },
-        include: {
-          user: {
-            select: {
-              nickname: true,
-            },
+      where: { user_id: BigInt(req.body.userId) },
+      skip,
+      take: Number(limit),
+      orderBy: {
+        created_at: 'desc',
+      },
+      include: {
+        user: {
+          select: {
+            nickname: true,
           },
         },
-      });
+      },
+    });
 
 
     return res.status(200).json({ success: true, data: reports });
@@ -80,15 +82,38 @@ export const getMyFeedbackList = async (req: Request, res: Response): Promise<Re
       orderBy: {
         created_at: 'desc',
       },
-      include: {
-        user: {
+      select: {
+        id: true,
+        comment: true,
+        safety_feeling: true,
+        img_url: true,
+        created_at: true,
+        grid_id: true,
+        feedback_tag: {
           select: {
-            nickname: true,
+            tag: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
     });
-    return res.status(200).json({ success: true, data: feedbacks });
+
+    // feedbackTags 배열을 tags 배열로 평탄화
+    const result = feedbacks.map(f => ({
+      id: f.id,
+      comment: f.comment,
+      safety_feeling: f.safety_feeling,
+      img_url: f.img_url,
+      created_at: f.created_at,
+      grid_id: f.grid_id,
+      tags: f.feedback_tag.map(ft => ft.tag), // [{id, name}, {id, name}, ...]
+    }));
+
+    return res.status(200).json({ success: true, data: result });
   } catch (err) {
     console.error("[getMyFeedbackList]", err);
     return res.status(500).json({ success: false, message: "Internal server error" });
