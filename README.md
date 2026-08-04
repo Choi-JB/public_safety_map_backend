@@ -9,9 +9,8 @@
 3. npx prisma generate
 4. npx prisma generate
    npx ts-node --transpile-only src/jobs/runScore.ts
-5. cd masking
-   python -m venv .venv
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+5. cd masking   최초 1회
+   python -m venv .venv.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 6. npm run dev
 7. http://localhost:{PORT}/health/db 접속해서 DB 연결 확인
 ```
