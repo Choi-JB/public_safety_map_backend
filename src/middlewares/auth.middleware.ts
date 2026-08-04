@@ -14,7 +14,7 @@ export const authMiddleware = async (
   const [scheme, token] = header.split(" ");
   // Bearer 스킴이 아니거나 토큰이 없으면 401 에러 반환
   if (scheme !== "Bearer" || !token) {
-    res.status(401).json({ success: false, message: "Unauthorized" });
+    res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
     return;
   }
 
@@ -31,7 +31,7 @@ export const authMiddleware = async (
     const rawId = payload.sub ?? payload.userId ?? payload.id;
     // rawId가 undefined 또는 null이면 401 에러 반환 (토큰이 유효하지 않을 경우)
     if (rawId === undefined || rawId === null) {
-      res.status(401).json({ success: false, message: "Unauthorized" });
+      res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
       return;
     }
 
@@ -41,13 +41,13 @@ export const authMiddleware = async (
     });
     //유효성 검사: user가 없거나 is_active가 Y가 아니면 401 에러 반환
     if (!user || user.is_active !== "Y") {
-      res.status(401).json({ success: false, message: "Unauthorized" });
+      res.status(401).json({ success: false, message: "Unauthorized 비활성화된 계정입니다. 관리자에게 문의해주세요." });
       return;
     }
 
     (req as any).user = { id: user.id, role: user.role };
     next();
   } catch {
-    res.status(401).json({ success: false, message: "Unauthorized" });
+    res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
   }
 };
