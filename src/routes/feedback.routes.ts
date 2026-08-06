@@ -1,10 +1,19 @@
 // 담당: 피드백/관리자팀
 import { Router } from "express";
+import {
+  getTags,
+  updateFeedback,
+  deleteFeedback,
+} from "../controllers/feedback.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// TODO: GET /feedbacks — 피드백 목록 조회
-// TODO: POST /feedbacks — 피드백 등록
-// TODO: GET /feedbacks/:id — 피드백 상세 조회
+// GET /feedbacks/tags  — 반드시 /:id 보다 위
+router.get("/tags", getTags);
+
+// PATCH|DELETE /feedbacks/:id  — 마이페이지
+router.patch("/:id", authMiddleware, updateFeedback);
+router.delete("/:id", authMiddleware, deleteFeedback);
 
 export default router;
