@@ -3,6 +3,8 @@ import { Router } from "express";
 import { getGrids } from "../controllers/grid.controller";
 import { getInfrastructures } from "../controllers/grid.controller";
 import { detail } from "../controllers/grid.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import { createFeedback } from "../controllers/feedback.controller";
 
 const router = Router();
 
@@ -13,6 +15,6 @@ router.get("/:id/infrastructures", getInfrastructures);
 // TODO: GET /grids/:id/detail — 격자 상세 정보 조회
 router.get("/:id/detail", detail);
 
-
-
+// 피드백 관련 경로
+router.post("/:id/feedbacks", authMiddleware, createFeedback);
 export default router;
