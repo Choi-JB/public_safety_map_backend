@@ -22,7 +22,7 @@ export const getMypage = async (req: Request, res: Response): Promise<Response> 
       where: { user_id: user.id },
     });
     const feedbackCount = await prismaClient.feedback.count({
-      where: { user_id: user.id },
+      where: { user_id: user.id, is_active: "Y" },
     });
     return res.status(200).json({
       success: true, data: {
@@ -46,7 +46,7 @@ export const getMyReportList = async (req: Request, res: Response): Promise<Resp
     const userId = BigInt((req as any).user.id);
     //내가 제보한 report 목록 조회
     const reports = await prismaClient.report.findMany({
-      where: { user_id: userId },
+      where: { user_id: userId, is_active: "Y" },
       skip,
       take: Number(limit),
       orderBy: {
@@ -78,7 +78,7 @@ export const getMyFeedbackList = async (req: Request, res: Response): Promise<Re
     const userId = BigInt((req as any).user.id);
     //내가 제보한 feedback 목록 조회
     const feedbacks = await prismaClient.feedback.findMany({
-      where: { user_id: userId },
+      where: { user_id: userId, is_active: "Y" },
       skip,
       take: Number(limit),
       orderBy: {
