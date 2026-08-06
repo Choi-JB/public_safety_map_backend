@@ -33,7 +33,9 @@ import path from "path";
 //   },
 // });
 
-export const IMAGE_UPLOAD_DIR = path.join(process.cwd(), "uploads", "img");
+export const IMAGE_UPLOAD_DIR = process.env.UPLOAD_DIR
+      ? path.join(process.env.UPLOAD_DIR, "img")
+      : path.join(process.cwd(), "uploads", "img");
 
 fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });
 

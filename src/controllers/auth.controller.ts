@@ -142,8 +142,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 14 * 24 * 60 * 60 * 1000,//만료시간 14일
     });
 
@@ -194,7 +194,12 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         where: { user_id: stored.user_id, revoked_at: null },
         data: { revoked_at: new Date() },
       });
-      res.clearCookie("refresh_token");
+      res.clearCookie("refresh_token",{
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
@@ -233,8 +238,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     res.cookie("refresh_token", newRefreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
@@ -269,7 +274,12 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
         where: { token_hash: tokenHash, revoked_at: null },
         data: { revoked_at: new Date() },
       });
-      res.clearCookie("refresh_token");
+      res.clearCookie("refresh_token",{
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
     }
 
     //관리자 : 세션 종료
@@ -290,7 +300,12 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
         res.status(500).json({ success: false, message: "Internal server error" });
         return;
       }
-      res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid",{
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
       res.status(200).json({ success: true, message: "Logged out" });
     });
 

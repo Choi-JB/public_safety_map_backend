@@ -24,6 +24,8 @@ import accidentZoneRoutes from "./routes/accidentZone.routes";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
+
 const PORT = Number(process.env.PORT) || 4100;
 
 app.use(cors(
@@ -42,8 +44,8 @@ app.use(session({
   rolling: true,    // 매 요청마다 세션 갱신
   cookie: {
     httpOnly: true,
-    secure: false,      // 배포할 때는 true, 개발할 때는 false
-    sameSite: "lax",
+    secure: true,      // 배포할 때는 true, 개발할 때는 false
+    sameSite: "none",
     maxAge: 1000 * 60 * 60 * 2,   // 2시간 후 자동 만료
   },
   
@@ -63,7 +65,7 @@ app.use("/mypage", mypageRoutes);
 //사고 다발구역
 app.use("/accident-zones", accidentZoneRoutes);
 // 이미지 파일 정적 파일 서비스
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
