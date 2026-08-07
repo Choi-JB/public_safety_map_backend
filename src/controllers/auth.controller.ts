@@ -132,6 +132,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // refresh token 발급 (원본은 쿠키로, 해시만 DB에 저장)
     const refreshToken = generateRefreshToken();
     const refreshExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);//만료시간 14일
+    
     await prisma.refresh_token.create({
       data: {
         user_id: user.id,
@@ -140,6 +141,33 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         created_at: new Date(),
       },
     });
+
+    //웹/앱 구분
+    const clientRaw = 
+      (typeof req.body?.client === "string" && req.body.client.trim()) ||
+      req.get("x-client-type") ||
+      "web";
+    const isApp = clientRaw.toLowerCase() === "app";
+
+    // 앱: body로 refresh 전달 (쿠키는 선택 — 안 심어도 됨)
+    if(isApp) {
+      res.status(200).json({
+        success: true,
+        data: {
+          access_token,
+          refresh_token: refreshToken, // 앱만
+          user: {
+            id: Number(user.id),
+            nickname: user.nickname,
+            role: user.role,
+            email: user.email,
+          },
+        },
+      });
+      return;
+    }
+
+    //웹: 쿠키로 refresh 전달, body로 access token 전달
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
       secure: true, // 배포 HTTPS면 true
@@ -168,7 +196,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 /** 토큰 갱신 (refresh token 검증 → 로테이션 → 새 access token 발급) */
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
-    const incomingToken = req.cookies?.refresh_token;
+    const incomingToken = req.cookies?.refresh_token ||
+        (typeof req.body?.refresh_token === "string"
+          ? req.body.refresh_token.trim()
+          : undefined);
     //쿠키에 refresh token 유무 확인
     if (!incomingToken) {
       res.status(401).json({ success: false, message: "Unauthorized" });
@@ -221,6 +252,14 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const newRefreshToken = generateRefreshToken();
     const newExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); //만료시간 14일
 
+    //access token 발급
+    const access_token = jwt.sign(
+      { role: user.role },
+      JWT_SECRET,
+      { subject: String(user.id), expiresIn: "1h" }
+    );
+
+
     await prisma.$transaction([
       prisma.refresh_token.update({
         where: { id: stored.id },
@@ -236,6 +275,27 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       }),
     ]);
 
+    
+    //웹/앱 구분
+    const clientRaw =
+      (typeof req.body?.client === "string" && req.body.client.trim()) ||
+      req.get("x-client-type") ||
+      "web";
+    const isApp = clientRaw.toLowerCase() === "app";
+
+    //앱일 경우 body로 access token, refresh token 전달
+    if (isApp) {
+      res.status(200).json({
+        success: true,
+        data: {
+          access_token,
+          refresh_token: newRefreshToken,
+        },
+      });
+      return;
+    }
+    
+    //웹: 쿠키로 refresh 전달, body로 access token 전달
     res.cookie("refresh_token", newRefreshToken, {
       httpOnly: true,
       secure: true, // 배포 HTTPS면 true
@@ -243,12 +303,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
-    const access_token = jwt.sign(
-      { role: user.role },
-      JWT_SECRET,
-      { subject: String(user.id), expiresIn: "1h" }
-    );
-
+    
     res.status(200).json({
       success: true,
       data: { access_token },
@@ -267,7 +322,12 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
   try {
     //일반 유저 : refresh token 폐기
-    const incomingToken = req.cookies?.refresh_token;
+    const incomingToken = req.cookies?.refresh_token ||
+        (typeof req.body?.refresh_token === "string"
+          ? req.body.refresh_token.trim()
+          : undefined);
+
+    //일반 유저: refresh token 폐기
     if (incomingToken) {
       const tokenHash = hashRefreshToken(incomingToken);
       await prisma.refresh_token.updateMany({

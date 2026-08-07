@@ -32,10 +32,12 @@ export const adminMiddleware = async (
     return;
   }
 
-
+  //관리자 정보 저장 -> admin.controller.ts에서 getAdminMe 함수에서 사용
   (req as any).admin = {
     id: req.session.userId,
     role: req.session.role,
+    email: user.email,
+    nickname: user.nickname,
   };
   next();
 };
