@@ -42,6 +42,7 @@ function parseWallClockAsUtc(raw: string): Date {
   return new Date(s + "Z");
 }
 
+/** 날짜 범위 시작 시간(KST) */
 export function parseDateStartKst(raw: string): Date {
   const s = raw.trim();
   if (DATE_ONLY.test(s)) {
@@ -51,6 +52,7 @@ export function parseDateStartKst(raw: string): Date {
   }
   return parseWallClockAsUtc(s);
 }
+/** 날짜 범위 종료 시간(KST) */
 export function parseDateEndKst(raw: string): Date {
   const s = raw.trim();
   if (DATE_ONLY.test(s)) {

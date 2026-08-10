@@ -1,6 +1,8 @@
 // 담당: 피드백/관리자팀
 import { Request, Response } from "express";
 import prisma from "../config/prismaClient";
+//시간 변환 유틸
+import { toKstWallClock } from "../utils/dateUtils";
 
 const SAFETY_FEELINGS = new Set(["안전", "보통", "불안"]);
 
@@ -154,7 +156,7 @@ export const createFeedback = async (req: Request, res: Response): Promise<void>
           comment,
           img_url,
           is_active: "Y",
-          created_at: new Date(),
+          created_at: toKstWallClock(),
         },
       });
 
