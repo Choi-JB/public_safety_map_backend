@@ -2,6 +2,9 @@
 import { Request, Response } from "express";
 import prisma from "../config/prismaClient";
 import { toRowCol } from "../utils/gridUtils";
+//시간 변환 유틸
+import { toKstWallClock } from "../utils/dateUtils";
+
 
 // function toRowCol(lat: number, lng: number) { ... }
 
@@ -140,8 +143,7 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
     }
 
     const grid_id = await resolveOrCreateGridId(lat, lng);
-    const now = new Date();
-    const expire_at = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const expire_at = toKstWallClock(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
     const row = await prisma.report.create({
       data: {
@@ -153,7 +155,7 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
         description: String(description),
         img_url,
         is_active: "Y",
-        created_at: now,
+        created_at: toKstWallClock(),
         expire_at,
       },
     });
