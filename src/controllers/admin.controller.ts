@@ -330,11 +330,11 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
     //날짜 범위 시작 시간, 날짜 범위 종료 시간 설정 (입력값이 있을 경우 없으면 기본값으로 대체)
     const dateFrom =
       dateFromRaw && dateFromRaw.trim() !== ""
-        ? new Date(dateFromRaw)
+        ? parseDateStartKst(dateFromRaw)
         : defaultStart;
     const dateTo =
       dateToRaw && dateToRaw.trim() !== ""
-        ? new Date(dateToRaw)
+        ? parseDateEndKst(dateToRaw)
         : todayEndKst;
 
     //조회 조건 설정 (날짜 범위)

@@ -126,12 +126,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const access_token = jwt.sign(
       { role: user.role },
       JWT_SECRET,
-      { subject: String(user.id), expiresIn: "1h" } //만료시간 1시간
+      { subject: String(user.id), expiresIn: "30m" } //만료시간 30분
     );
 
     // refresh token 발급 (원본은 쿠키로, 해시만 DB에 저장)
     const refreshToken = generateRefreshToken();
-    const refreshExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);//만료시간 14일
+    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);//만료시간 7일
     
     await prisma.refresh_token.create({
       data: {
@@ -172,7 +172,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       httpOnly: true,
       secure: false, // 배포 HTTPS면 true
       sameSite: "lax",
-      maxAge: 14 * 24 * 60 * 60 * 1000,//만료시간 14일
+      maxAge: 7 * 24 * 60 * 60 * 1000,//만료시간 7일
     });
 
     res.status(200).json({
@@ -250,13 +250,13 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     // 로테이션: 기존 토큰 폐기 + 새 토큰 발급 (트랜잭션으로 묶어 원자성 보장)
     const newRefreshToken = generateRefreshToken();
-    const newExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); //만료시간 14일
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); //만료시간 7일
 
     //access token 발급
     const access_token = jwt.sign(
       { role: user.role },
       JWT_SECRET,
-      { subject: String(user.id), expiresIn: "1h" }
+      { subject: String(user.id), expiresIn: "30m" }
     );
 
 
@@ -300,7 +300,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       httpOnly: true,
       secure: false, // 배포 HTTPS면 true
       sameSite: "lax",
-      maxAge: 14 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     
