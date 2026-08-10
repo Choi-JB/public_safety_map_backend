@@ -373,6 +373,13 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
             nickname: true,
           },
         },
+        grid:{
+          select: {
+            id: true,
+            lat: true,
+            lng: true,
+          },
+        }
       },
     });
     return res.status(200).json({
