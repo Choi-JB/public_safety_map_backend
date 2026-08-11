@@ -223,23 +223,6 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
       : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
-
-    // const reports = await prismaClient.report.findMany({
-    //   where,
-    //   skip,
-    //   take: Number(limit),
-    //   orderBy,
-    //   //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
-    //   //report 제보한 사람의 닉네임 추가
-    //   include: {
-    //     user: {
-    //       select: {
-    //         nickname: true,
-    //       },
-    //     },
-    //   },
-    // });
-
     const [reports, total] = await Promise.all([
       prismaClient.report.findMany({
         where,
@@ -448,29 +431,6 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
       where.comment = { contains: keyword };
     }
 
-    // const feedbacks = await prismaClient.feedback.findMany({
-    //   where,
-    //   skip,
-    //   take: Number(limit),
-    //   orderBy: {
-    //     created_at: 'desc',
-    //   },
-    //   include: {
-    //     user: {
-    //       select: {
-    //         nickname: true,
-    //       },
-    //     },
-    //     grid:{
-    //       select: {
-    //         id: true,
-    //         lat: true,
-    //         lng: true,
-    //       },
-    //     }
-    //   },
-    // });
-
     const [feedbacks, total] = await Promise.all([
       prismaClient.feedback.findMany({
         where,
@@ -618,23 +578,6 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
     }
 
     const cityEventTypes = await getTypes("city_events");
-
-    // const cityEvents = await prismaClient.city_events.findMany({
-    //   where,
-    //   skip,
-    //   take: Number(limit),
-    //   orderBy: [
-    //     { is_active: "desc" },   // N → Y
-    //     { created_at: "desc" },  // 같은 상태끼리는 최신순
-    //   ],
-    //   include: {
-    //     user: {
-    //       select: {
-    //         nickname: true,
-    //       },
-    //     },
-    //   },
-    // });
 
     const [cityEvents, total] = await Promise.all([
       prismaClient.city_events.findMany({
@@ -831,12 +774,11 @@ export const restoreCityEvent = async (req: Request, res: Response): Promise<Res
   }
 };
 
-/** 신규 마커 생성 */
-export const createMarker = async (req: Request, res: Response): Promise<void> => {
-  //to do: 신규 마커 생성
-}
 
-
+/** 그리드 아이디 조회 
+ * request: lat, lng
+ * response: grid_id
+*/
 export const getGridId = async (req: Request, res: Response): Promise<Response> => {
   try {
     const ORIGIN_LAT = 33.0;
