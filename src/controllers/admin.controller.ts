@@ -19,7 +19,7 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
 
   try {
     const now = new Date(); // 현재 시각 UTC
-    const todayStartKst = getTodayStartKst();//오늘 시작 시간(KST) 00시 00분 00초
+    const todayStartKst = toKstWallClock(getTodayStartKst(now));//오늘 시작 시간(KST) 00시 00분 00초
 
     const [
       active_reports,
@@ -37,7 +37,9 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
       prismaClient.report.count({
         where: {
           created_at: { gte: todayStartKst },
+          is_active: "Y",
         },
+
       }),
       // 누적 피드백 (소프트삭제 포함 전체 — 스펙의 total_feedbacks)
       prismaClient.feedback.count(),
@@ -45,6 +47,7 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
       prismaClient.feedback.count({
         where: {
           created_at: { gte: todayStartKst },
+          is_active: "Y",
         },
       }),
       // 종료되지 않은 도시정보만 (end_at >= 현재시각)
@@ -60,8 +63,70 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
           is_active: "Y",
           end_at: { lt: now },
         },
-      }),
+      })
+      
     ]);
+
+    //최근 5일간 일별 신규 제보 수
+    const reports_daily_count = await prismaClient.$queryRaw<
+      {date: string, count: bigint}[]
+    >`
+    SELECT 
+      d.date,
+      COUNT(r.id) AS count
+    FROM (
+      SELECT CURDATE() AS date
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 2 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 3 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 4 DAY)
+    ) d
+    LEFT JOIN report r
+      ON DATE(r.created_at) = d.date
+      AND r.is_active = 'Y'
+    GROUP BY d.date
+    ORDER BY d.date ASC
+    `;
+
+    const five_days_reports_count = reports_daily_count.map((item) => ({
+      date: item.date,
+      count: item.count,
+    }));
+
+    //최근 5일간 일별 피드백 수
+    const feedbacks_daily_count = await prismaClient.$queryRaw<
+      {date: string, count: bigint}[]
+    >`
+    SELECT 
+      d.date,
+      COUNT(f.id) AS count
+    FROM (
+      SELECT CURDATE() AS date
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 2 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 3 DAY)
+      UNION ALL
+      SELECT DATE_SUB(CURDATE(), INTERVAL 4 DAY)
+    ) d
+    LEFT JOIN feedback f
+      ON DATE(f.created_at) = d.date
+      AND f.is_active = 'Y'
+    GROUP BY d.date
+    ORDER BY d.date ASC
+    `;
+
+    const five_days_feedbacks_count = feedbacks_daily_count.map((item) => ({
+      date: item.date,
+      count: item.count,
+    }));
+    
     return res.status(200).json({
       success: true,
       data: {
@@ -71,6 +136,8 @@ export const getAdminSummary = async (req: Request, res: Response): Promise<Resp
         feedbacks_today,
         active_city_events,
         inactive_city_events,
+        five_days_reports_count,
+        five_days_feedbacks_count,
       },
     });
   } catch (error) {
@@ -157,29 +224,50 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
 
-    const reports = await prismaClient.report.findMany({
-      where,
-      skip,
-      take: Number(limit),
-      orderBy,
-      //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
-      //report 제보한 사람의 닉네임 추가
-      include: {
-        user: {
-          select: {
-            nickname: true,
+    // const reports = await prismaClient.report.findMany({
+    //   where,
+    //   skip,
+    //   take: Number(limit),
+    //   orderBy,
+    //   //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
+    //   //report 제보한 사람의 닉네임 추가
+    //   include: {
+    //     user: {
+    //       select: {
+    //         nickname: true,
+    //       },
+    //     },
+    //   },
+    // });
+
+    const [reports, total] = await Promise.all([
+      prismaClient.report.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy,
+        //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
+        //report 제보한 사람의 닉네임 추가
+        include: {
+          user: {
+            select: {
+              nickname: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prismaClient.report.count({
+        where
+      })
+    ]);
 
     const reportTypes = await getTypes("report");
 
-    //console.log(reports);
     return res.status(200).json({
       success: true,
       data: reports,
       types: reportTypes,
+      total
     });
   } catch (error) {
     console.error(error);
@@ -360,31 +448,47 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
       where.comment = { contains: keyword };
     }
 
-    const feedbacks = await prismaClient.feedback.findMany({
-      where,
-      skip,
-      take: Number(limit),
-      orderBy: {
-        created_at: 'desc',
-      },
-      include: {
-        user: {
-          select: {
-            nickname: true,
-          },
+    // const feedbacks = await prismaClient.feedback.findMany({
+    //   where,
+    //   skip,
+    //   take: Number(limit),
+    //   orderBy: {
+    //     created_at: 'desc',
+    //   },
+    //   include: {
+    //     user: {
+    //       select: {
+    //         nickname: true,
+    //       },
+    //     },
+    //     grid:{
+    //       select: {
+    //         id: true,
+    //         lat: true,
+    //         lng: true,
+    //       },
+    //     }
+    //   },
+    // });
+
+    const [feedbacks, total] = await Promise.all([
+      prismaClient.feedback.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: {
+          created_at: 'desc',
         },
-        grid:{
-          select: {
-            id: true,
-            lat: true,
-            lng: true,
-          },
-        }
-      },
-    });
+      }),
+      prismaClient.feedback.count({
+        where
+      })
+    ]);
+
     return res.status(200).json({
       success: true,
       data: feedbacks,
+      total
     });
   } catch (error) {
     console.error(error);
@@ -514,23 +618,47 @@ export const getCityEvents = async (req: Request, res: Response): Promise<Respon
     }
 
     const cityEventTypes = await getTypes("city_events");
-    const cityEvents = await prismaClient.city_events.findMany({
-      where,
-      skip,
-      take: Number(limit),
-      orderBy: [
-        { is_active: "desc" },   // N → Y
-        { created_at: "desc" },  // 같은 상태끼리는 최신순
-      ],
-      include: {
-        user: {
-          select: {
-            nickname: true,
+
+    // const cityEvents = await prismaClient.city_events.findMany({
+    //   where,
+    //   skip,
+    //   take: Number(limit),
+    //   orderBy: [
+    //     { is_active: "desc" },   // N → Y
+    //     { created_at: "desc" },  // 같은 상태끼리는 최신순
+    //   ],
+    //   include: {
+    //     user: {
+    //       select: {
+    //         nickname: true,
+    //       },
+    //     },
+    //   },
+    // });
+
+    const [cityEvents, total] = await Promise.all([
+      prismaClient.city_events.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: [
+          { is_active: "desc" },   // N → Y
+          { created_at: "desc" },  // 같은 상태끼리는 최신순
+        ],
+        include: {
+          user: {
+            select: {
+              nickname: true,
+            },
           },
         },
-      },
-    });
-    return res.status(200).json({ success: true, data: cityEvents, types: cityEventTypes });
+      }),
+      prismaClient.city_events.count({
+        where
+      })
+    ]);
+
+    return res.status(200).json({ success: true, data: cityEvents, types: cityEventTypes, total });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "도시 행사 목록 조회에 실패했습니다!" });
