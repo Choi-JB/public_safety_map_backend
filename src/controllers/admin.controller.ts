@@ -223,6 +223,23 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       ? { expire_at: "desc" as const }  // 비활성 → 만료/비활성 시각 기준
       : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
+
+    // const reports = await prismaClient.report.findMany({
+    //   where,
+    //   skip,
+    //   take: Number(limit),
+    //   orderBy,
+    //   //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
+    //   //report 제보한 사람의 닉네임 추가
+    //   include: {
+    //     user: {
+    //       select: {
+    //         nickname: true,
+    //       },
+    //     },
+    //   },
+    // });
+
     const [reports, total] = await Promise.all([
       prismaClient.report.findMany({
         where,
@@ -289,7 +306,7 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
         user_id: created_by.id,
         type, description, img_url:img_url || null, grid_id: grid.id, lat, lng, 
         created_at: toKstWallClock(),
-        expire_at: toKstWallClock(new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000)),
+        expire_at: toKstWallClock(new Date(new Date().getTime() + 24 * 60 * 60 * 1000)),
       },
     })
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
@@ -438,6 +455,20 @@ export const getFeedbackList = async (req: Request, res: Response): Promise<Resp
         take: Number(limit),
         orderBy: {
           created_at: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              nickname: true,
+            },
+          },
+          grid:{
+            select: {
+              id: true,
+              lat: true,
+              lng: true,
+            },
+          },
         },
       }),
       prismaClient.feedback.count({
@@ -774,8 +805,7 @@ export const restoreCityEvent = async (req: Request, res: Response): Promise<Res
   }
 };
 
-
-/** 그리드 아이디 조회 
+/** 그리드 아이디 조회
  * request: lat, lng
  * response: grid_id
 */
