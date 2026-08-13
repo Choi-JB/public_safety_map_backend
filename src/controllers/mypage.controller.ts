@@ -19,7 +19,7 @@ export const getMypage = async (req: Request, res: Response): Promise<Response> 
 
     //유저가 제보한 제보, 피드백 건수 조회
     const reportCount = await prismaClient.report.count({
-      where: { user_id: user.id },
+      where: { user_id: user.id, is_active: "Y" },
     });
     const feedbackCount = await prismaClient.feedback.count({
       where: { user_id: user.id, is_active: "Y" },

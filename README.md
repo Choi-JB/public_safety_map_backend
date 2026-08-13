@@ -105,3 +105,25 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 |---|---|
 | `SESSION_SECRET` | 관리자 세션 전부 무효화 → 전원 재로그인 필요 |
 | `JWT_SECRET` | 발급된 access token 전부 무효화. refresh token이 유효한 유저는 `client.ts`가 자동으로 `/auth/refresh`를 호출해 새 access token을 받아 재로그인 없이 복구됨 |
+
+
+## DB 이벤트 스케줄러 (테이블별)
+
+MySQL Event Scheduler가 켜져 있어야 한다 (`SET GLOBAL event_scheduler = ON;`).
+
+### `refresh_token`
+
+만료·폐기된 refresh token을 매일 정리한다.  
+기준: `expires_at` 또는 `revoked_at`이 **현재 시각 기준 7일보다 이전**인 행 삭제.
+
+```sql
+CREATE EVENT cleanup_refresh_tokens
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_TIMESTAMP
+DO
+    DELETE FROM refresh_token
+    WHERE
+        expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
+        OR revoked_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
+
+
