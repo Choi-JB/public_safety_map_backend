@@ -126,4 +126,14 @@ DO
         expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
         OR revoked_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
 
+### `report`
 
+만료된 제보들을 매일 비활성화 처리
+
+CREATE EVENT update_expired_reports
+ON SCHEDULE EVERY 1 DAY
+DO
+    UPDATE report
+    SET is_active = 'N'
+    WHERE expire_at < NOW()
+      AND is_active = 'Y';
