@@ -65,17 +65,35 @@ export const listAccidentZones = async (
       types = ALL_ACCIDENT_ZONE_TYPES;
     }
 
-    const nested = await Promise.all(
+    const nested = await Promise.allSettled(
       types.map((t) => getAccidentZones(t, siDo, guGun))
     );
-    const items = nested.flat();
+
+    const okTypes: AccidentZoneType[] = [];
+    const items = nested.flatMap((result, i) => {
+      const type = types[i];
+      if (result.status === "fulfilled") {
+        okTypes.push(type);
+        return result.value;
+      }
+      console.error(`[accident-zones] type=${type} failed`, result.reason);
+      return [];
+    });
+
+    if (okTypes.length === 0) {
+      res.status(502).json({
+        success: false,
+        message: "failed to fetch koroad frequentzone",
+      });
+      return;
+    }
 
     res.json({
       success: true,
       data: {
         siDo,
         guGun,
-        types,
+        types: okTypes,
         count: items.length,
         items,
       },

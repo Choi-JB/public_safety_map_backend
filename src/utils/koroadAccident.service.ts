@@ -177,8 +177,8 @@ import {
   ): Promise<AccidentZoneDto[]> {
     const path = KOROAD_PATH[type];
     const yearCds = SEARCH_YEAR_CDS[type];
-  
-    const batches = await Promise.all(
+
+    const batches = await Promise.allSettled(
       yearCds.map(async (searchYearCd) => {
         const raw = await fetchAllForYear({
           path,
@@ -189,11 +189,28 @@ import {
         return raw.map((it) => normalize(it, type, searchYearCd));
       })
     );
-  
-    // 동일 id 중복 제거 (연도 여러 개일 때)
+
+    const rows: AccidentZoneDto[] = [];
+    let anyOk = false;
+    batches.forEach((result, i) => {
+      if (result.status === "fulfilled") {
+        anyOk = true;
+        rows.push(...result.value);
+        return;
+      }
+      console.error(
+        `[koroad] type=${type} yearCd=${yearCds[i]} failed`,
+        result.reason
+      );
+    });
+
+    if (!anyOk) {
+      throw new Error(`koroad ${type} all yearCd failed`);
+    }
+
     const map = new Map<string, AccidentZoneDto>();
-    for (const row of batches.flat()) {
-      if (row.path.length < 3) continue; // 폴리곤 없는 건 스킵
+    for (const row of rows) {
+      if (row.path.length < 3) continue;
       map.set(row.id, row);
     }
     return [...map.values()];
