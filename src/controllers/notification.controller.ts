@@ -39,19 +39,11 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
   }
 };
 
+//알림 전송 확인용 API 백엔드 테스트용
+//fcm_token 전송 필요!
 export const sendNotification = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { fcmToken } = req.body;
-
-    // const fcmToekn = await prismaClient.device_tokens.findMany({
-    //   where:{
-    //     is_active: 'Y',
-    //   },
-    //   select: {
-    //     fcm_token: true,
-    //     device_type: true,
-    //   },
-    // });
 
     if (!fcmToken) {
       return res.status(400).json({ message: 'fcmToken이 필요합니다.' });
@@ -60,7 +52,7 @@ export const sendNotification = async (req: Request, res: Response): Promise<Res
     const messageId = await sendPushNotification(
       {
         topic: 'all',
-        token: fcmToken,
+        // token: fcmToken,
         title: 'FCM 테스트',
         data: {
           title: 'FCM 테스트',
