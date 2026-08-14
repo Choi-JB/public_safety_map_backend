@@ -4,6 +4,7 @@ import prisma from "../config/prismaClient";
 import { toRowCol } from "../utils/gridUtils";
 //시간 변환 유틸
 import { toKstWallClock } from "../utils/dateUtils";
+import { sendPushNotification } from "../utils/notification.service";
 
 
 // function toRowCol(lat: number, lng: number) { ... }
@@ -160,6 +161,18 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
       },
     });
 
+    await sendPushNotification(
+      {
+        topic: "all",
+          type: "report",
+          title: "새로운 제보가 등록되었습니다.",
+          data: { 
+            report_id: String(row.id),
+            lat: String(row.lat),
+            lng: String(row.lng),
+          },
+      }
+    );
     res.status(201).json({
       success: true,
       data: {

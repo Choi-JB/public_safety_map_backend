@@ -20,6 +20,7 @@ import uploadRoutes from "./routes/upload.routes";
 import mypageRoutes from "./routes/mypage.routes";
 //사고 다발구역
 import accidentZoneRoutes from "./routes/accidentZone.routes";
+import notificationRoutes from "./routes/notification.routes";
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use("/admin", adminRoutes);
 app.use("/devices", deviceRoutes);
 app.use("/uploads", uploadRoutes);
 app.use("/mypage", mypageRoutes);
+app.use("/notification", notificationRoutes);
 //사고 다발구역
 app.use("/accident-zones", accidentZoneRoutes);
 // 이미지 파일 정적 파일 서비스

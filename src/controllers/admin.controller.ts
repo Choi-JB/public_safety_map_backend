@@ -7,6 +7,7 @@ import { getTypes } from '../utils/commonUtils';
 
 // KST 시간 관련 유틸리티 함수 (오늘 시작 시간, 오늘 종료 시간, 기본 범위 시작 시간)
 import { getTodayStartKst, getTodayEndKst, getDefaultRangeStartKst, parseDateStartKst, parseDateEndKst, toKstWallClock } from '../utils/dateUtils';
+import { sendPushNotification } from "../utils/notification.service";
 
 //bigint serializer 에러 바로 bigint를 문자로 리턴
 (BigInt.prototype as any).toJSON = function () {
@@ -308,7 +309,20 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
         created_at: toKstWallClock(),
         expire_at: toKstWallClock(new Date(new Date().getTime() + 24 * 60 * 60 * 1000)),
       },
-    })
+    }).then(async (report) => {
+      await sendPushNotification(
+        {
+          topic: "all",
+          type: "report",
+          title: "새로운 제보가 등록되었습니다.",
+          data: {
+            report_id: String(report.id),
+            lat: String(report.lat),
+            lng: String(report.lng),
+          },
+        }
+      );
+    });
     return res.status(200).json({ success: true, message: "등록되었습니다!" });
   } catch (error) {
     console.error(error);

@@ -51,3 +51,43 @@ export const authMiddleware = async (
     res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
   }
 };
+
+/**
+ * 선택 인증: Bearer 없으면 비로그인으로 통과.
+ * 토큰이 있으면 검증하고 req.user를 채움. 잘못된 토큰은 401.
+ */
+export const optionalAuthMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const header = req.headers.authorization || "";
+  const [scheme, token] = header.split(" ");
+
+  if (scheme !== "Bearer" || !token) {
+    next();
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+    const rawId = payload.sub ?? payload.userId ?? payload.id;
+    if (rawId === undefined || rawId === null) {
+      res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: BigInt(String(rawId)) },
+    });
+    if (!user || user.is_active !== "Y") {
+      res.status(401).json({ success: false, message: "Unauthorized 비활성화된 계정입니다. 관리자에게 문의해주세요." });
+      return;
+    }
+
+    (req as any).user = { id: user.id, role: user.role };
+    next();
+  } catch {
+    res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
+  }
+};

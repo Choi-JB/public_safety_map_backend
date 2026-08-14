@@ -228,8 +228,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       res.clearCookie("refresh_token",{
         path: "/",
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: false,
+        sameSite: "lax",
       });
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
@@ -337,8 +337,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       res.clearCookie("refresh_token",{
         path: "/",
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: false,
+        sameSite: "lax",
       });
     }
 
@@ -363,8 +363,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       res.clearCookie("connect.sid",{
         path: "/",
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: false,
+        sameSite: "lax",
       });
       res.status(200).json({ success: true, message: "Logged out" });
     });
