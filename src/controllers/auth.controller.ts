@@ -170,8 +170,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     //웹: 쿠키로 refresh 전달, body로 access token 전달
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,//만료시간 7일
     });
 
@@ -298,8 +298,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     //웹: 쿠키로 refresh 전달, body로 access token 전달
     res.cookie("refresh_token", newRefreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
