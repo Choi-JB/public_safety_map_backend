@@ -15,8 +15,15 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
     const rawUserId = (req as any).user?.id;
     const userId = rawUserId != null ? BigInt(rawUserId) : null;
 
-    await prismaClient.device_tokens.create({
-      data: {
+    await prismaClient.device_tokens.upsert({
+      where: { fcm_token: fcmToken },
+      update: {
+        user_id: userId,
+        device_type: device_type ?? undefined,
+        is_active: 'Y',
+        updated_at: toKstWallClock(),
+      },
+      create: {
         user_id: userId,
         fcm_token: fcmToken,
         device_type: device_type ?? null,
