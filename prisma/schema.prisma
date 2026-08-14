@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -31,7 +31,7 @@ model city_events {
 model device_tokens {
   id          BigInt                   @id @default(autoincrement())
   user_id     BigInt?
-  fcm_token   String                   @db.Text
+  fcm_token   String                   @unique(map: "fcm_token") @db.VarChar(255)
   device_type String?                  @default("web") @db.VarChar(20)
   is_active   device_tokens_is_active? @default(Y)
   created_at  DateTime?                @db.DateTime(0)
