@@ -5,9 +5,9 @@ import { optionalAuthMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// TODO: POST /alarm/set-token — 알림 토큰 설정
-router.post("/set-token", optionalAuthMiddleware, setNotificationToken);
-router.post("/send", sendNotification);
+// TODO: POST /notification/register — 알림 토큰 설정
+router.post("/register", optionalAuthMiddleware, setNotificationToken);
+router.post("/send-all", sendNotification);
 
 export default router;
 

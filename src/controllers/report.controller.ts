@@ -161,16 +161,20 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
       },
     });
 
+    //알림 전송 (모든 유저에게 전송)
     await sendPushNotification(
       {
         topic: "all",
+
+        type: "report",
+        title: "새로운 제보가 등록되었습니다.",
+        body:row.description ?? "",
+        data: { 
           type: "report",
-          title: "새로운 제보가 등록되었습니다.",
-          data: { 
-            report_id: String(row.id),
-            lat: String(row.lat),
-            lng: String(row.lng),
-          },
+          id: Number(row.id),
+          lat: String(row.lat),
+          lng: String(row.lng),
+        },
       }
     );
     res.status(201).json({
