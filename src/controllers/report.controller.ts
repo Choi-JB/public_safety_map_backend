@@ -167,7 +167,7 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
         topic: "all",
 
         type: "report",
-        title: "새로운 제보가 등록되었습니다.",
+        title: "새로운 제보 등록",
         body:row.description ?? "",
         data: { 
           type: "report",
