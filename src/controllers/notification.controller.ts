@@ -37,9 +37,9 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
       },
     });
     //web 이외의 디바이스는 모든 토픽 구독
-    if(device_type && device_type !== 'web') {
+    //if(device_type && device_type !== 'web') {
       await subscribeToAllTopic(fcmToken);
-    }
+    //}
 
     return res.status(200).json({ success: true, message: 'FCM token 설정 완료' });
   } catch (err) {
