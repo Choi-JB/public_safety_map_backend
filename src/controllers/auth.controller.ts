@@ -355,17 +355,6 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       data: { active_session_id: null },
     });
 
-    const user_id = BigInt(session.userId ?? incomingToken.id);
-
-    //알림용 fcm 토큰 정보 폐기
-    await prisma.device_tokens.updateMany({
-      where: { user_id: user_id },
-      data: {
-        is_active: "N",
-        updated_at: toKstWallClock(),
-      },
-    });
-
     session.destroy((err) => {
       if (err) {
         console.error("[logout]", err);

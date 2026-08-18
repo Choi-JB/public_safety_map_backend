@@ -93,3 +93,18 @@ export async function subscribeToAllTopic(fcmToken: string) {
   } 
 
 }
+
+//all topic에 구독 해제
+export async function unsubscribeFromAllTopic(fcmTokens: string[]) {
+  if (fcmTokens.length === 0) return;
+
+  for (let i = 0; i < fcmTokens.length; i += 1000) {
+    const result = await messaging.unsubscribeFromTopic(
+      fcmTokens.slice(i, i + 1000),
+      "all"
+    );
+    if (result.failureCount > 0) {
+      console.error("토픽 해제 실패:", result.errors[0].error.message);
+    }
+  }
+}

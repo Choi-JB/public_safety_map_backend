@@ -48,6 +48,27 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
   }
 };
 
+/** 알림 토큰 연결 해제 */
+export const unlinkNotificationToken = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({ success: false, message: "FCM token is required" });
+    }
+
+    await prismaClient.device_tokens.updateMany({
+      where: { fcm_token: fcmToken },
+      data: { user_id: null, updated_at: toKstWallClock() },
+    });
+
+    return res.status(200).json({ success: true, message: "FCM token 연결 해제 완료" });
+  } catch (err) {
+    console.error("[unlinkNotificationToken]", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 //알림 전송 확인용 API 백엔드 테스트용
 //fcm_token 전송 필요!
 export const sendNotification = async (req: Request, res: Response): Promise<Response> => {
