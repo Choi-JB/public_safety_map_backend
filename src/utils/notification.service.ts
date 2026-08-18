@@ -26,15 +26,17 @@ export async function sendPushNotification(
   const data = Object.fromEntries(
     Object.entries({
       type: pushNotificationData.type,
+      title: String(title),
+      body: String(body),
       ...(pushNotificationData.data ?? {}),
     }).map(([k, v]) => [k, String(v)])
   );
 
   const message = {
-    notification: {
-      title: title,
-      body: body,
-    },
+    // notification: {
+    //   title: title,
+    //   body: body,
+    // },
     data: data,
     android: {
       priority: "high" as const, //우선순위 high or normal
@@ -45,11 +47,11 @@ export async function sendPushNotification(
         sound: "default"
       },
     },
-    webpush: {
-      headers: { Urgency: "high" },
-      notification: { title, body, requireInteraction: true },
-      fcmOptions: { link: process.env.WEB_APP_URL ?? "http://localhost:3000" },
-    }
+    // webpush: {
+    //   headers: { Urgency: "high" },
+    //   notification: { title, body, requireInteraction: true },
+    //   fcmOptions: { link: process.env.WEB_APP_URL ?? "http://localhost:3000" },
+    // }
    
     // apns: { payload: { aps: { sound: "default" } } },  //ios 알림 설정
   };
@@ -57,24 +59,26 @@ export async function sendPushNotification(
   //앱 전송 (토큰이 있으면 그 토큰, 없으면 토픽)
   if (pushNotificationData.token) {
     await messaging.send({ token: pushNotificationData.token, ...message });
+    //console.log('if token send');
   } else {
     await messaging.send({ topic: pushNotificationData.topic ?? "all", ...message });
+    //console.log('if topic send');
   }
 
 
   // 웹: DB에 저장된 토큰 직접 전송
-  const webTokens = (
-    await prismaClient.device_tokens.findMany({
-      where: { is_active: "Y", device_type: "web" },
-      select: { fcm_token: true },
-    })
-  ).map((d) => d.fcm_token);
-  for (let i = 0; i < webTokens.length; i += 500) {
-    await messaging.sendEachForMulticast({
-      tokens: webTokens.slice(i, i + 500),
-      ...message,
-    });
-  }
+  // const webTokens = (
+  //   await prismaClient.device_tokens.findMany({
+  //     where: { is_active: "Y", device_type: "web" },
+  //     select: { fcm_token: true },
+  //   })
+  // ).map((d) => d.fcm_token);
+  // for (let i = 0; i < webTokens.length; i += 500) {
+  //   await messaging.sendEachForMulticast({
+  //     tokens: webTokens.slice(i, i + 500),
+  //     ...message,
+  //   });
+  // }
 }
 
 // all 모든 유저에게 알림 전송 하게 all topic에 구독
