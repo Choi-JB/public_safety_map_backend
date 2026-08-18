@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import prisma from "../config/prismaClient";
 import { generateRefreshToken, hashRefreshToken } from "../utils/commonUtils";
 import { JWT_SECRET } from "../config/env";
+import { toKstWallClock } from "../utils/dateUtils";
 
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LEN = 8;
@@ -352,6 +353,17 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     await prisma.user.update({
       where: { id: BigInt(session.userId) },
       data: { active_session_id: null },
+    });
+
+    const user_id = BigInt(session.userId ?? incomingToken.id);
+
+    //알림용 fcm 토큰 정보 폐기
+    await prisma.device_tokens.updateMany({
+      where: { user_id: user_id },
+      data: {
+        is_active: "N",
+        updated_at: toKstWallClock(),
+      },
     });
 
     session.destroy((err) => {

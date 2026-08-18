@@ -310,13 +310,16 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
         expire_at: toKstWallClock(new Date(new Date().getTime() + 24 * 60 * 60 * 1000)),
       },
     }).then(async (report) => {
+      //알림 전송 (모든 유저에게 전송)
       await sendPushNotification(
         {
           topic: "all",
           type: "report",
           title: "새로운 제보가 등록되었습니다.",
-          data: {
-            report_id: String(report.id),
+          body:report.description ?? "",
+          data: { 
+            type: "report",
+            id: Number(report.id),
             lat: String(report.lat),
             lng: String(report.lng),
           },

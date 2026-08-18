@@ -13,7 +13,13 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
     }
 
     const rawUserId = (req as any).user?.id;
-    const userId = rawUserId != null ? BigInt(rawUserId) : null;
+    const sessionUserId = req.session?.userId;
+    let userId: bigint | null = null;
+    if (rawUserId != null) {
+      userId = BigInt(rawUserId);
+    } else if (sessionUserId != null && req.session?.role === "ADMIN") {
+      userId = BigInt(sessionUserId);
+    }
 
     await prismaClient.device_tokens.upsert({
       where: { fcm_token: fcmToken },
@@ -30,7 +36,10 @@ export const setNotificationToken = async (req: Request, res: Response): Promise
         created_at: toKstWallClock(),
       },
     });
-    await subscribeToAllTopic(fcmToken);
+    //web 이외의 디바이스는 모든 토픽 구독
+    if(device_type && device_type !== 'web') {
+      await subscribeToAllTopic(fcmToken);
+    }
 
     return res.status(200).json({ success: true, message: 'FCM token 설정 완료' });
   } catch (err) {
