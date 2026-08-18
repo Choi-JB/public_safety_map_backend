@@ -72,12 +72,12 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
 
     const where: {
       is_active: "Y";
-      expire_at: { gt: Date };
+      expire_at: { gt: string | Date };
       lat?: { gte: number; lte: number };
       lng?: { gte: number; lte: number };
     } = {
       is_active: "Y",
-      expire_at: { gt: new Date() },
+      expire_at: { gt: toKstWallClock() },
     };
 
     if (
