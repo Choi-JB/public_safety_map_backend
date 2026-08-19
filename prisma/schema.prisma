@@ -156,6 +156,12 @@ model user {
   report             report[]
 }
 
+model data_version {
+  data_type  String   @id @db.VarChar(50)
+  version    String   @db.VarChar(20)
+  updated_at DateTime @db.DateTime(0)
+}
+
 enum device_tokens_is_active {
   Y
   N
