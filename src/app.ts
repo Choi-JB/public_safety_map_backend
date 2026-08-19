@@ -21,6 +21,7 @@ import mypageRoutes from "./routes/mypage.routes";
 //사고 다발구역
 import accidentZoneRoutes from "./routes/accidentZone.routes";
 import notificationRoutes from "./routes/notification.routes";
+import syncRoutes from "./routes/sync.routes";
 
 dotenv.config();
 
@@ -58,10 +59,11 @@ app.use("/infrastructures", infraRoutes);
 app.use("/reports", reportRoutes);
 app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
-app.use("/devices", deviceRoutes);
+app.use("/device", deviceRoutes);
 app.use("/uploads", uploadRoutes);
 app.use("/mypage", mypageRoutes);
 app.use("/notification", notificationRoutes);
+app.use("/sync", syncRoutes);
 //사고 다발구역
 app.use("/accident-zones", accidentZoneRoutes);
 // 이미지 파일 정적 파일 서비스
