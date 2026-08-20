@@ -159,24 +159,28 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
         created_at: toKstWallClock(),
         expire_at,
       },
+    }).then(async (report) => {
+      //알림 전송 (모든 유저에게 전송)
+      await sendPushNotification(
+        {
+          topic: "all",
+          type: "report",
+          title: "새로운 제보 등록",
+          body:report.description ?? "",
+          data: { 
+            id: Number(report.id),
+            type: report.type,
+            description:report.description,
+            img_url:report.img_url,
+            lat: String(report.lat),
+            lng: String(report.lng),
+            created_at: report.created_at
+          },
+        }
+      );
+      return report;
     });
 
-    //알림 전송 (모든 유저에게 전송)
-    await sendPushNotification(
-      {
-        topic: "all",
-
-        type: "report",
-        title: "새로운 제보 등록",
-        body:row.description ?? "",
-        data: { 
-          type: "report",
-          id: Number(row.id),
-          lat: String(row.lat),
-          lng: String(row.lng),
-        },
-      }
-    );
     res.status(201).json({
       success: true,
       data: {

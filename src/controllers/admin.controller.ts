@@ -302,10 +302,13 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
           title: "새로운 제보 등록",
           body:report.description ?? "",
           data: { 
-            type: "report",
             id: Number(report.id),
+            type: report.type,
+            description:report.description,
+            img_url:report.img_url,
             lat: String(report.lat),
             lng: String(report.lng),
+            created_at: report.created_at
           },
         }
       );
