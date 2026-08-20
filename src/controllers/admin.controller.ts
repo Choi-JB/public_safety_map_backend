@@ -324,7 +324,7 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
             img_url:report.img_url,
             lat: String(report.lat),
             lng: String(report.lng),
-            created_at: report.created_at
+            created_at: toKstWallClock(report.created_at ?? new Date())
           },
         }
       );
