@@ -32,7 +32,7 @@ const PORT = Number(process.env.PORT) || 5000;
 
 app.use(cors(
   {
-    origin: "http://localhost:3000", // 정확한 origin
+    origin: ["http://localhost:3000", "https://public-safety-map-web.vercel.app"], // 정확한 origin
     credentials: true, // 쿠키 허용
   }
 ));
