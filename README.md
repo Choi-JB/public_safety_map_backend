@@ -233,6 +233,27 @@ flowchart TB
 
 ---
 
+## 🗄️ ERD
+
+![ERD](docs/images/erd.png)
+
+주요 테이블: `user`, `grid`, `infrastructures`, `report`, `feedback`, `tag`, `feedback_tag`, `device_tokens`, `refresh_token`, `city_events`, `data_version`
+
+```text
+user: 유저 정보
+grid : 지도에 표시할 격자 데이터
+infrastructures, data_version : 인프라 데이터
+report : 유저 제보 내용
+feedback, tag, feedback_tag : 유저들의 구역 평가
+
+device_tokens : 알림 전송을 위한 fcm_token 저장 테이블
+refresh_token : refresh token 정보
+city_evnets : 도시 정보
+```
+docs/public_safety_DB.sql 참조
+
+---
+
 ## 📡 API 명세
 
 `/docs/API명세서.md` 참조
