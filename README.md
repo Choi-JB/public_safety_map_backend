@@ -27,8 +27,7 @@
 
 [데모 버전 링크](https://43-202-197-59.nip.io/health)
 
-/health
-/db
+
 자세한건 api 명세서 참조
 ---
 
@@ -70,11 +69,12 @@ npm run dev
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-# 교체 시
+**교체 시**
 
-SESSION_SECRET 변경 → 관리자 세션 전부 무효 → 재로그인 필요
-JWT_SECRET 변경 → access token 전부 무효 (유효한 refresh가 있으면 /auth/refresh로 복구 가능)
+- `SESSION_SECRET` 변경 → 관리자 세션 전부 무효 → 재로그인 필요
+- `JWT_SECRET` 변경 → access token 전부 무효 (유효한 refresh가 있으면 `/auth/refresh`로 복구 가능)
 
 ---
 
@@ -94,71 +94,71 @@ JWT_SECRET 변경 → access token 전부 무효 (유효한 refresh가 있으면
 
 **프로젝트 구조 Project Structure**
 
-```
+```text
 backend/
-├── docs/                                # 설계·명세 문서
-├── masking/                             # 이미지 마스킹 (Python)
-│   ├── mask_cli.py
-│   ├── masking.py
-│   └── requirements.txt
-├── prisma/
-│   └── schema.prisma                    # DB 스키마
-├── src/
-│   ├── config/
-│   │   ├── env.ts                       # 필수 환경변수 검증
-│   │   ├── firebase.ts                  # Firebase Admin (FCM)
-│   │   ├── koroad.ts                    # 사고다발구역 API 상수
-│   │   └── prismaClient.ts              # PrismaClient 싱글톤
-│   ├── controllers/
-│   │   ├── accidentZone.controller.ts   # 사고다발구역 조회
-│   │   ├── admin.controller.ts          # 관리자 대시보드·제보/피드백/행사 관리
-│   │   ├── auth.controller.ts           # 로그인·회원가입·로그아웃·refresh
-│   │   ├── city.controller.ts           # 도시 행사 공개 조회
-│   │   ├── feedback.controller.ts       # 유저 피드백
-│   │   ├── grid.controller.ts           # 격자·격자 내 인프라·상세
-│   │   ├── infra.controller.ts          # 반경 기준 인프라 조회
-│   │   ├── mypage.controller.ts         # 마이페이지 (내 제보·피드백)
-│   │   ├── notification.controller.ts   # FCM 토큰 등록·테스트 알림
-│   │   ├── report.controller.ts         # 유저 제보 CRUD
-│   │   ├── sync.controller.ts           # 앱 캐시용 버전·grid/infra 동기화
-│   │   └── upload.controller.ts         # 이미지 업로드
-│   ├── middlewares/
-│   │   ├── auth.middleware.ts           # JWT 검증 (일반 유저)
-│   │   └── admin.middleware.ts          # 세션 검증 (관리자)
-│   ├── routes/
-│   │   ├── accidentZone.routes.ts       # /accident-zones
-│   │   ├── admin.routes.ts              # /admin/*
-│   │   ├── auth.routes.ts               # /auth/*
-│   │   ├── city.routes.ts               # /city-events
-│   │   ├── feedback.routes.ts           # /feedbacks
-│   │   ├── grid.routes.ts               # /grids
-│   │   ├── health.routes.ts             # /health
-│   │   ├── infra.routes.ts              # /infrastructures
-│   │   ├── mypage.routes.ts             # /mypage
-│   │   ├── notification.routes.ts       # /notification
-│   │   ├── report.routes.ts             # /reports
-│   │   ├── sync.routes.ts               # /sync
-│   │   └── upload.routes.ts             # /uploads
-│   ├── jobs/                            # 안전등급 배치
-│   │   ├── runScore.ts                  # CLI 진입점
-│   │   ├── scoreOps.ts                  # 점수 산출·DB 반영
-│   │   ├── scoreScheduler.ts            # cron 스케줄 등록
-│   │   └── weights.ts                   # 가중치·등급 매핑
-│   ├── type/
-│   │   └── express-session.d.ts         # 세션·Request 타입 확장
-│   ├── utils/
-│   │   ├── commonUtils.ts               # refresh token 해시 등
-│   │   ├── dateUtils.ts                 # KST 날짜 유틸
-│   │   ├── gridUtils.ts                 # 격자 좌표 계산
-│   │   ├── imageUpload.ts               # multer 이미지 저장
-│   │   ├── imgMasking.ts                # 마스킹 파이프라인 연동
-│   │   ├── koroadAccident.service.ts    # 공단 사고다발구역 조회·캐시
-│   │   └── notification.service.ts      # FCM 푸시 전송
-│   └── app.ts                           # Express 앱·라우트 마운트
-├── uploads/                             # 업로드 이미지 저장
-├── .env.example
-├── package.json
-└── README.md
+|-- docs/                         # 설계·명세 문서
+|-- masking/                      # 이미지 마스킹 (Python)
+|   |-- mask_cli.py
+|   |-- masking.py
+|   `-- requirements.txt
+|-- prisma/
+|   `-- schema.prisma             # DB 스키마
+|-- src/
+|   |-- config/
+|   |   |-- env.ts                # 필수 환경변수 검증
+|   |   |-- firebase.ts           # Firebase Admin (FCM)
+|   |   |-- koroad.ts             # 사고다발구역 API 상수
+|   |   `-- prismaClient.ts       # PrismaClient 싱글톤
+|   |-- controllers/
+|   |   |-- accidentZone.controller.ts
+|   |   |-- admin.controller.ts
+|   |   |-- auth.controller.ts
+|   |   |-- city.controller.ts
+|   |   |-- feedback.controller.ts
+|   |   |-- grid.controller.ts
+|   |   |-- infra.controller.ts
+|   |   |-- mypage.controller.ts
+|   |   |-- notification.controller.ts
+|   |   |-- report.controller.ts
+|   |   |-- sync.controller.ts
+|   |   `-- upload.controller.ts
+|   |-- middlewares/
+|   |   |-- auth.middleware.ts    # JWT 검증 (일반 유저)
+|   |   `-- admin.middleware.ts   # 세션 검증 (관리자)
+|   |-- routes/
+|   |   |-- accidentZone.routes.ts
+|   |   |-- admin.routes.ts
+|   |   |-- auth.routes.ts
+|   |   |-- city.routes.ts
+|   |   |-- feedback.routes.ts
+|   |   |-- grid.routes.ts
+|   |   |-- health.routes.ts
+|   |   |-- infra.routes.ts
+|   |   |-- mypage.routes.ts
+|   |   |-- notification.routes.ts
+|   |   |-- report.routes.ts
+|   |   |-- sync.routes.ts
+|   |   `-- upload.routes.ts
+|   |-- jobs/                     # 안전등급 배치
+|   |   |-- runScore.ts
+|   |   |-- scoreOps.ts
+|   |   |-- scoreScheduler.ts
+|   |   `-- weights.ts
+|   |-- type/
+|   |   `-- express-session.d.ts
+|   |-- utils/
+|   |   |-- commonUtils.ts
+|   |   |-- dateUtils.ts
+|   |   |-- gridUtils.ts
+|   |   |-- imageUpload.ts
+|   |   |-- imgMasking.ts
+|   |   |-- koroadAccident.service.ts
+|   |   `-- notification.service.ts
+|   `-- app.ts                    # Express 앱·라우트 마운트
+|-- uploads/                      # 업로드 이미지 저장
+|-- .env.example
+|-- package.json
+`-- README.md
 ```
 
 ---
@@ -168,57 +168,58 @@ backend/
 ```mermaid
 flowchart TB
   subgraph Clients
-    WEB[Web / Admin<br/>Next.js]
-    APP[Mobile App]
+    WEB["Web Admin Next.js"]
+    APP["Mobile App"]
   end
 
-  subgraph Backend["Backend (Express + TypeScript)"]
-    MW[CORS / Cookie / Session]
-    AUTH_MW[authMiddleware JWT]
-    ADMIN_MW[adminMiddleware Session]
-
-    subgraph Routes
-      R_AUTH["/auth"]
-      R_MAP["/grids · /infrastructures<br/>/city-events · /accident-zones"]
-      R_USER["/reports · /feedbacks<br/>/mypage · /uploads"]
-      R_ADMIN["/admin"]
-      R_SYNC["/sync"]
-      R_NOTI["/notification"]
-    end
-
-    subgraph Jobs
-      CRON["node-cron<br/>안전등급 배치 00:00 KST"]
-    end
-
-    MASK[Python 이미지 마스킹]
+  subgraph Backend["Backend Express TypeScript"]
+    MW["CORS Cookie Session"]
+    AUTH_MW["authMiddleware JWT"]
+    ADMIN_MW["adminMiddleware Session"]
+    R_AUTH["auth"]
+    R_MAP["grids infrastructures city-events accident-zones"]
+    R_USER["reports feedbacks mypage uploads"]
+    R_ADMIN["admin"]
+    R_SYNC["sync"]
+    R_NOTI["notification"]
+    CRON["node-cron safety grade batch"]
+    MASK["Python image masking"]
   end
 
   subgraph Data
-    DB[(MariaDB<br/>Prisma)]
-    FS[(uploads/)]
+    DB[("MariaDB Prisma")]
+    FS[("uploads")]
   end
 
   subgraph External
-    FCM[Firebase Cloud Messaging]
-    KOROAD[도로교통공단<br/>사고다발 OpenAPI]
+    FCM["Firebase Cloud Messaging"]
+    KOROAD["KOROAD OpenAPI"]
   end
 
-  WEB -->|REST + credentials| MW
-  APP -->|REST + JWT / FCM token| MW
-  MW --> Routes
+  WEB -->|"REST credentials"| MW
+  APP -->|"REST JWT FCM"| MW
+  MW --> R_AUTH
+  MW --> R_MAP
+  MW --> R_USER
+  MW --> R_ADMIN
+  MW --> R_SYNC
+  MW --> R_NOTI
 
   R_USER --> AUTH_MW
   R_ADMIN --> ADMIN_MW
 
-  Routes --> DB
+  R_AUTH --> DB
+  R_MAP --> DB
+  R_USER --> DB
+  R_ADMIN --> DB
+  R_SYNC --> DB
   R_USER --> FS
   R_USER --> MASK
   MASK --> FS
 
-  R_USER -->|제보 등록 시 푸시| FCM
-  R_NOTI -->|토큰 등록 / topic| FCM
-  R_MAP -->|사고다발 조회| KOROAD
-  R_SYNC --> DB
+  R_USER -->|"report push"| FCM
+  R_NOTI -->|"token topic"| FCM
+  R_MAP -->|"accident zones"| KOROAD
   CRON --> DB
 ```
 
@@ -236,13 +237,15 @@ flowchart TB
 **API 명세**
 
 /docs/API명세서.md 참조
-https://treasure-muscle-85a.notion.site/API-3c6c1c44bf488063b15ff85ac1498c3f?pvs=74
+
+[API 명세서 링크](https://treasure-muscle-85a.notion.site/API-3c6c1c44bf488063b15ff85ac1498c3f?pvs=74)
 
 ---
 
 **DB 스케줄러**
 
-# 취소되거나 만료된 토큰 정리
+```sql
+-- 취소되거나 만료된 토큰 정리
 CREATE EVENT cleanup_refresh_tokens
 ON SCHEDULE EVERY 1 DAY
 STARTS CURRENT_TIMESTAMP
@@ -252,8 +255,7 @@ DO
         expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
         OR revoked_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
 
-
-# 만료된 제보 정보 지도에 미표시
+-- 만료된 제보 정보 지도에 미표시
 CREATE EVENT update_expired_reports
 ON SCHEDULE EVERY 1 DAY
 DO
@@ -261,6 +263,7 @@ DO
     SET is_active = 'N'
     WHERE expire_at < NOW()
       AND is_active = 'Y';
+```
 
 
 ---
