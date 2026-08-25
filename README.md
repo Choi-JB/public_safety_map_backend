@@ -1,8 +1,9 @@
 **치안 안전 지도 (Backend)**
 
 공공데이터로는 알 수 없는 체감 안전도를, 실시간 제보와 평가로 채운 치안 정보 지도 서비스 입니다.
-[Web 버전 페이지 링크]
-[App 버전 페이지 링크]
+
+[Web 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_web)
+[App 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_app)
 
 ---
 
@@ -24,10 +25,11 @@
 
 **DEMO**
 
-[웹 페이지 스크린샷]
+[데모 버전 링크](https://43-202-197-59.nip.io/health)
 
-[배포 링크]
-
+/health
+/db
+자세한건 api 명세서 참조
 ---
 
 **실행 방법 Getting Started**
@@ -38,9 +40,10 @@ npm install
 
 # 2. 환경변수 설정
 #    .env.example을 복사해 .env 생성 후 값 채우기
-#    - DATABASE_URL, JWT_SECRET, SESSION_SECRET (필수)
+#    - DATABASE_URL, JWT_SECRET, SESSION_SECRET (필수) (아래 생성방법 참조)
 #    - FIREBASE_* (FCM 알림)
 #    - KOROAD_AUTH_KEY (사고다발구역, 선택)
+
 
 # 3. Prisma Client 생성
 npx prisma generate
@@ -60,6 +63,18 @@ npm run dev
 # 7. DB 연결 확인
 #    http://localhost:{PORT}/health/db
 ```
+
+### JWT_SECRET / SESSION_SECRET 생성
+
+유출이 의심되거나 최초 설정할 때, 아래 명령을 **두 번** 실행해 나온 값을 각각 `.env`에 넣습니다.
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# 교체 시
+
+SESSION_SECRET 변경 → 관리자 세션 전부 무효 → 재로그인 필요
+JWT_SECRET 변경 → access token 전부 무효 (유효한 refresh가 있으면 /auth/refresh로 복구 가능)
 
 ---
 
@@ -150,7 +165,71 @@ backend/
 
 **아키텍쳐 구조도 Architecture**
 
-[그림]
+```mermaid
+flowchart TB
+  subgraph Clients
+    WEB[Web / Admin<br/>Next.js]
+    APP[Mobile App]
+  end
+
+  subgraph Backend["Backend (Express + TypeScript)"]
+    MW[CORS / Cookie / Session]
+    AUTH_MW[authMiddleware JWT]
+    ADMIN_MW[adminMiddleware Session]
+
+    subgraph Routes
+      R_AUTH["/auth"]
+      R_MAP["/grids · /infrastructures<br/>/city-events · /accident-zones"]
+      R_USER["/reports · /feedbacks<br/>/mypage · /uploads"]
+      R_ADMIN["/admin"]
+      R_SYNC["/sync"]
+      R_NOTI["/notification"]
+    end
+
+    subgraph Jobs
+      CRON["node-cron<br/>안전등급 배치 00:00 KST"]
+    end
+
+    MASK[Python 이미지 마스킹]
+  end
+
+  subgraph Data
+    DB[(MariaDB<br/>Prisma)]
+    FS[(uploads/)]
+  end
+
+  subgraph External
+    FCM[Firebase Cloud Messaging]
+    KOROAD[도로교통공단<br/>사고다발 OpenAPI]
+  end
+
+  WEB -->|REST + credentials| MW
+  APP -->|REST + JWT / FCM token| MW
+  MW --> Routes
+
+  R_USER --> AUTH_MW
+  R_ADMIN --> ADMIN_MW
+
+  Routes --> DB
+  R_USER --> FS
+  R_USER --> MASK
+  MASK --> FS
+
+  R_USER -->|제보 등록 시 푸시| FCM
+  R_NOTI -->|토큰 등록 / topic| FCM
+  R_MAP -->|사고다발 조회| KOROAD
+  R_SYNC --> DB
+  CRON --> DB
+```
+
+**요청 흐름 요약**
+
+| 구분 | 인증 | 주요 경로 |
+|---|---|---|
+| 일반 유저 | JWT + Refresh | 제보·피드백·마이페이지·업로드 |
+| 관리자 | Session 쿠키 | `/admin/*` |
+| 공개 | 없음 | 격자·인프라·행사·사고다발·sync·health |
+| 비동기 | — | FCM 푸시, 일일 안전등급 cron, DB Event Scheduler |
 
 ---
 
