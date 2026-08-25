@@ -95,67 +95,67 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ```text
 backend/
-|-- docs/                         # 설계·명세 문서
-|-- masking/                      # 이미지 마스킹 (Python)
-|   |-- mask_cli.py
-|   |-- masking.py
-|   `-- requirements.txt
+|-- docs/                              # 설계·명세 문서
+|-- masking/                           # 이미지 마스킹 (Python)
+|   |-- mask_cli.py                    # 마스킹 CLI 진입점
+|   |-- masking.py                     # 얼굴 마스킹 로직
+|   `-- requirements.txt               # Python 의존성
 |-- prisma/
-|   `-- schema.prisma             # DB 스키마
+|   `-- schema.prisma                  # DB 스키마
 |-- src/
 |   |-- config/
-|   |   |-- env.ts                # 필수 환경변수 검증
-|   |   |-- firebase.ts           # Firebase Admin (FCM)
-|   |   |-- koroad.ts             # 사고다발구역 API 상수
-|   |   `-- prismaClient.ts       # PrismaClient 싱글톤
+|   |   |-- env.ts                     # 필수 환경변수 검증
+|   |   |-- firebase.ts                # Firebase Admin (FCM)
+|   |   |-- koroad.ts                  # 사고다발구역 API 상수
+|   |   `-- prismaClient.ts            # PrismaClient 싱글톤
 |   |-- controllers/
-|   |   |-- accidentZone.controller.ts
-|   |   |-- admin.controller.ts
-|   |   |-- auth.controller.ts
-|   |   |-- city.controller.ts
-|   |   |-- feedback.controller.ts
-|   |   |-- grid.controller.ts
-|   |   |-- infra.controller.ts
-|   |   |-- mypage.controller.ts
-|   |   |-- notification.controller.ts
-|   |   |-- report.controller.ts
-|   |   |-- sync.controller.ts
-|   |   `-- upload.controller.ts
+|   |   |-- accidentZone.controller.ts # 사고다발구역 조회
+|   |   |-- admin.controller.ts        # 관리자 대시보드·제보/피드백/행사 관리
+|   |   |-- auth.controller.ts         # 로그인·회원가입·로그아웃·refresh
+|   |   |-- city.controller.ts         # 도시 행사 공개 조회
+|   |   |-- feedback.controller.ts     # 유저 피드백
+|   |   |-- grid.controller.ts         # 격자·격자 내 인프라·상세
+|   |   |-- infra.controller.ts        # 반경 기준 인프라 조회
+|   |   |-- mypage.controller.ts       # 마이페이지 (내 제보·피드백)
+|   |   |-- notification.controller.ts # FCM 토큰 등록·테스트 알림
+|   |   |-- report.controller.ts       # 유저 제보 CRUD
+|   |   |-- sync.controller.ts         # 앱 캐시용 버전·grid/infra 동기화
+|   |   `-- upload.controller.ts       # 이미지 업로드
 |   |-- middlewares/
-|   |   |-- auth.middleware.ts    # JWT 검증 (일반 유저)
-|   |   `-- admin.middleware.ts   # 세션 검증 (관리자)
+|   |   |-- auth.middleware.ts         # JWT 검증 (일반 유저)
+|   |   `-- admin.middleware.ts        # 세션 검증 (관리자)
 |   |-- routes/
-|   |   |-- accidentZone.routes.ts
-|   |   |-- admin.routes.ts
-|   |   |-- auth.routes.ts
-|   |   |-- city.routes.ts
-|   |   |-- feedback.routes.ts
-|   |   |-- grid.routes.ts
-|   |   |-- health.routes.ts
-|   |   |-- infra.routes.ts
-|   |   |-- mypage.routes.ts
-|   |   |-- notification.routes.ts
-|   |   |-- report.routes.ts
-|   |   |-- sync.routes.ts
-|   |   `-- upload.routes.ts
-|   |-- jobs/                     # 안전등급 배치
-|   |   |-- runScore.ts
-|   |   |-- scoreOps.ts
-|   |   |-- scoreScheduler.ts
-|   |   `-- weights.ts
+|   |   |-- accidentZone.routes.ts     # /accident-zones
+|   |   |-- admin.routes.ts            # /admin/*
+|   |   |-- auth.routes.ts             # /auth/*
+|   |   |-- city.routes.ts             # /city-events
+|   |   |-- feedback.routes.ts         # /feedbacks
+|   |   |-- grid.routes.ts             # /grids
+|   |   |-- health.routes.ts           # /health
+|   |   |-- infra.routes.ts            # /infrastructures
+|   |   |-- mypage.routes.ts           # /mypage
+|   |   |-- notification.routes.ts     # /notification
+|   |   |-- report.routes.ts           # /reports
+|   |   |-- sync.routes.ts             # /sync
+|   |   `-- upload.routes.ts           # /uploads
+|   |-- jobs/                          # 안전등급 배치
+|   |   |-- runScore.ts                # CLI 진입점
+|   |   |-- scoreOps.ts                # 점수 산출·DB 반영
+|   |   |-- scoreScheduler.ts          # cron 스케줄 등록
+|   |   `-- weights.ts                 # 가중치·등급 매핑
 |   |-- type/
-|   |   `-- express-session.d.ts
+|   |   `-- express-session.d.ts       # 세션·Request 타입 확장
 |   |-- utils/
-|   |   |-- commonUtils.ts
-|   |   |-- dateUtils.ts
-|   |   |-- gridUtils.ts
-|   |   |-- imageUpload.ts
-|   |   |-- imgMasking.ts
-|   |   |-- koroadAccident.service.ts
-|   |   `-- notification.service.ts
-|   `-- app.ts                    # Express 앱·라우트 마운트
-|-- uploads/                      # 업로드 이미지 저장
-|-- .env.example
+|   |   |-- commonUtils.ts             # refresh token 해시 등
+|   |   |-- dateUtils.ts               # KST 날짜 유틸
+|   |   |-- gridUtils.ts               # 격자 좌표 계산
+|   |   |-- imageUpload.ts             # multer 이미지 저장
+|   |   |-- imgMasking.ts              # 마스킹 파이프라인 연동
+|   |   |-- koroadAccident.service.ts  # 공단 사고다발구역 조회·캐시
+|   |   `-- notification.service.ts    # FCM 푸시 전송
+|   `-- app.ts                         # Express 앱·라우트 마운트
+|-- uploads/                           # 업로드 이미지 저장
+|-- .env.example                       # 환경변수 예시
 |-- package.json
 `-- README.md
 ```
