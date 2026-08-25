@@ -40,6 +40,7 @@ npm install
 # 2. 환경변수 설정
 #    .env.example을 복사해 .env 생성 후 값 채우기
 #    - DATABASE_URL, JWT_SECRET, SESSION_SECRET (필수) (아래 생성방법 참조)
+#    - CORS_ORIGINS (프론트 origin, 쉼표 구분)
 #    - FIREBASE_* (FCM 알림)
 #    - KOROAD_AUTH_KEY (사고다발구역, 선택)
 
@@ -74,6 +75,18 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 - `SESSION_SECRET` 변경 → 관리자 세션 전부 무효 → 재로그인 필요
 - `JWT_SECRET` 변경 → access token 전부 무효 (유효한 refresh가 있으면 `/auth/refresh`로 복구 가능)
+
+### 🌐 CORS_ORIGINS
+
+프론트엔드(웹)에서 API를 호출할 때 허용할 origin을 쉼표로 나열합니다. `credentials: true`이므로 *정확한 origin*만 넣어야 합니다.
+
+```env
+CORS_ORIGINS=http://localhost:3000,https://public-safety-map-web.vercel.app
+```
+
+- 미설정 시 기본값: `http://localhost:3000`
+- 배포 웹 도메인·로컬 개발 URL을 추가·변경할 때 `.env`만 수정하면 됩니다 (코드 수정 불필요)
+- `.env` 변경 후 서버를 *재시작*해야 반영됩니다
 
 ---
 

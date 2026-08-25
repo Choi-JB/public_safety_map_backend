@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { SESSION_SECRET } from "./config/env";
+import { SESSION_SECRET, CORS_ORIGINS } from "./config/env";
 
 import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
@@ -32,7 +32,7 @@ const PORT = Number(process.env.PORT) || 5000;
 
 app.use(cors(
   {
-    origin: ["http://localhost:3000", "https://public-safety-map-web.vercel.app"], // 정확한 origin
+    origin: CORS_ORIGINS,
     credentials: true, // 쿠키 허용
   }
 ));
