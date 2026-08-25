@@ -81,7 +81,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 프론트엔드(웹)에서 API를 호출할 때 허용할 origin을 쉼표로 나열합니다. `credentials: true`이므로 *정확한 origin*만 넣어야 합니다.
 
 ```env
-CORS_ORIGINS=http://localhost:3000,https://public-safety-map-web.vercel.app
+CORS_ORIGINS=http://localhost:3000,배포중인웹페이지주소
 ```
 
 - 미설정 시 기본값: `http://localhost:3000`
