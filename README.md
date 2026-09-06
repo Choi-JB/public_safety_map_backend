@@ -303,3 +303,11 @@ DO
 ## 👤 본인 역할 Role & Contribution
 
 로그인, 관리자 페이지, FCM 알림, 마이페이지
+/admin
+/auth
+/mypage
+/notification
+/sync
+/upload
+
+middlewares/
