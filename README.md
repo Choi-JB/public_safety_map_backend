@@ -271,7 +271,7 @@ docs/public_safety_DB.sql 참조
 
 `/docs/API명세서.md` 참조
 
-[API 명세서 링크](https://treasure-muscle-85a.notion.site/API-3c6c1c44bf488063b15ff85ac1498c3f?pvs=74)
+[API 명세서 링크](https://treasure-muscle-85a.notion.site/API-3c6c1c44bf488063b15ff85ac1498c3f?pvs=74](http://treasure-muscle-85a.notion.site/API-3d5c1c44bf4880fcb24bf3b6cddec96d?pvs=74)
 
 ---
 
