@@ -307,7 +307,5 @@ DO
 /auth
 /mypage
 /notification
-/sync
-/upload
 
 middlewares/
