@@ -15,3 +15,9 @@ function requireEnv(name: string): string {
 
 export const JWT_SECRET = requireEnv("JWT_SECRET");
 export const SESSION_SECRET = requireEnv("SESSION_SECRET");
+
+/** CORS 허용 origin 목록 (.env CORS_ORIGINS, 쉼표 구분) */
+export const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);

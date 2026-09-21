@@ -225,6 +225,22 @@ export const getUserReports = async (req: Request, res: Response): Promise<Respo
       : { created_at: "desc" as const }; // 활성(또는 전체) → 등록일 기준
 
 
+    // const reports = await prismaClient.report.findMany({
+    //   where,
+    //   skip,
+    //   take: Number(limit),
+    //   orderBy,
+    //   //report 테이블의 user_id와 user 테이블의 id가 같은 경우 nickname 필드 추가
+    //   //report 제보한 사람의 닉네임 추가
+    //   include: {
+    //     user: {
+    //       select: {
+    //         nickname: true,
+    //       },
+    //     },
+    //   },
+    // });
+
     const [reports, total] = await Promise.all([
       prismaClient.report.findMany({
         where,
@@ -302,10 +318,13 @@ export const createUserReport = async (req: Request, res: Response): Promise<Res
           title: "새로운 제보 등록",
           body:report.description ?? "",
           data: { 
-            type: "report",
             id: Number(report.id),
+            type: report.type,
+            description:report.description,
+            img_url:report.img_url,
             lat: String(report.lat),
             lng: String(report.lng),
+            created_at: toKstWallClock(report.created_at ?? new Date())
           },
         }
       );

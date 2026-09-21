@@ -1,8 +1,8 @@
-# API 명세서 (v1.3)
+# API 명세서 (v1.5)
 
 > 기준: 현재 백엔드 코드 (`src/app.ts`, `src/routes/*`, `src/controllers/*`)  
-> 개발 Base URL: `http://localhost:4100` (또는 배포 API 도메인)  
-> 관리자 API 상세: [`Admin API 명세서.md`](./Admin%20API%20명세서.md)
+> 개발 Base URL: `http://localhost:5000` (`.env`의 `PORT`, 기본값 5000)  
+> Demo 버전 URL: `https://43-202-197-59.nip.io`
 
 ## 1. 개요
 
@@ -13,13 +13,23 @@
 | 공통 실패 | `{ "success": false, "message": "..." }` |
 | BigInt | `id` 등 BigInt는 JSON에서 **문자열**로 직렬화될 수 있음 |
 | CORS (개발) | `origin: http://localhost:3000`, `credentials: true` |
+| 쿠키 공통 | `httpOnly`, `secure: true`, `sameSite: "none"` (크로스 사이트 + HTTPS 전제) |
 
 **인증**
 
 | 구분 | 방식 | 사용처 |
 |---|---|---|
-| 일반 유저 (`USER`) | Access JWT (`Authorization: Bearer {access_token}`) + Refresh | 보호 API (`/reports` 등록 등, `/mypage`) |
+| 일반 유저 (`USER`) | Access JWT (`Authorization: Bearer {access_token}`) + Refresh | `/reports` 등록·수정·삭제, `/feedbacks` 수정·삭제, `/grids/:id/feedbacks`, `/mypage` |
 | 관리자 (`ADMIN`) | express-session 쿠키 (`connect.sid`) | `/admin/*` |
+
+**토큰 / 세션 TTL**
+
+| 항목 | 값 |
+|---|---|
+| Access JWT | **30분**. payload `{ role }`, `sub` = user id 문자열 |
+| Refresh | **7일**. 웹: 쿠키 `refresh_token` / 앱: body |
+| 관리자 세션 | **2시간** (`maxAge`), `rolling: true` |
+| 로그인 잠금 | 비밀번호 실패 **5회** → 약 **1분** (`429`) |
 
 **인증 표기**
 - 🔓 인증 불필요
@@ -31,7 +41,7 @@
 | `client` / `X-Client-Type` | Refresh 전달 |
 |---|---|
 | `web` (기본) | httpOnly 쿠키 `refresh_token` |
-| `app` | 응답 body의 `refresh_token` (Secure Storage 저장) |
+| `app` | 응답 body의 `refresh_token` |
 
 ---
 
@@ -45,40 +55,44 @@
 | POST | `/auth/login` | 🔓 | 로그인 (USER=JWT / ADMIN=세션) |
 | POST | `/auth/refresh` | 🔓* | Access 갱신 (*refresh 필요) |
 | POST | `/auth/logout` | 🔓* | 로그아웃 (*refresh/세션) |
-| POST | `/auth/change-pw` | 🔓 | 비밀번호 변경 (이메일+기존 비번) |
+| POST | `/auth/change-pw` | 🔓 | 비밀번호 변경 |
 | GET | `/grids` | 🔓 | viewport 격자 목록 |
 | GET | `/grids/{id}/infrastructures` | 🔓 | 격자 내 인프라 |
 | GET | `/grids/{id}/detail` | 🔓 | 격자 인포카드 |
 | POST | `/grids/{id}/feedbacks` | 🔐 | 피드백 등록 |
-| GET | `/city-events` | 🔓 | 도시 행사 (bbox, 진행중) |
+| GET | `/city-events` | 🔓 | 도시 행사 (bbox) |
 | GET | `/infrastructures` | 🔓 | 반경 기준 인프라 |
 | GET | `/reports` | 🔓 | 활성 제보 목록 |
-| POST | `/reports` | 🔐 | 제보 등록 |
+| POST | `/reports` | 🔐 | 제보 등록 (+ FCM 알림) |
 | PATCH | `/reports/{id}` | 🔐 | 제보 수정 (본인) |
-| DELETE | `/reports/{id}` | 🔐 | 제보 소프트 삭제 (본인/ADMIN role) |
+| DELETE | `/reports/{id}` | 🔐 | 제보 소프트 삭제 |
 | GET | `/feedbacks/tags` | 🔓 | 태그 목록 |
 | PATCH | `/feedbacks/{id}` | 🔐 | 피드백 수정 (본인) |
-| DELETE | `/feedbacks/{id}` | 🔐 | 피드백 소프트 삭제 (본인/ADMIN role) |
+| DELETE | `/feedbacks/{id}` | 🔐 | 피드백 소프트 삭제 |
 | GET | `/mypage` | 🔐 | 마이페이지 요약 |
 | GET | `/mypage/report` | 🔐 | 내 제보 목록 |
 | GET | `/mypage/feedback` | 🔐 | 내 피드백 목록 |
 | POST | `/uploads/image` | 🔓 | 일반 이미지 업로드 |
-| POST | `/uploads/image/report` | 🔓 | 제보용 이미지 (마스킹 후 저장) |
+| POST | `/uploads/image/report` | 🔓 | 제보용 이미지 (마스킹) |
 | GET | `/uploads/**` | 🔓 | 업로드 파일 정적 서빙 |
 | GET | `/accident-zones` | 🔓 | 사고다발지역 (KOROAD 프록시) |
-| GET/POST | `/admin/*` | 👑 | 관리자 API (상세는 Admin 명세) |
+| POST | `/notification/register` | 🔓† | FCM 토큰 등록 |
+| PATCH | `/notification/unregister` | 🔓 | FCM 토큰-유저 연결 해제 |
+| POST | `/notification/send-all` | 🔓 | FCM 테스트 전송 |
+| GET | `/sync/version` | 🔓 | 데이터 버전 목록 |
+| GET | `/sync/grids` | 🔓 | 앱 캐시용 격자 전체 |
+| GET | `/sync/infrastructures` | 🔓 | 앱 캐시용 인프라 (페이지네이션) |
+| GET/POST | `/admin/*` | 👑 | 관리자 API |
 
-### 미구현 / 구 명세와 다름
+† `optionalAuthMiddleware`는 import만 되어 있고 **라우트에 미연결**. JWT/`req.user`로 `user_id`를 채우려면 미들웨어를 라우트에 붙여야 함. 관리자 세션(`req.session.userId`)은 미들웨어 없이도 연결 가능.
 
-| 구 명세 | 현재 |
+### 미구현 / 참고
+
+| 항목 | 현재 |
 |---|---|
-| `POST /auth/signup` | → `POST /auth/register` |
-| `GET /shelters` | 미구현 (`GET /infrastructures`로 유사 조회) |
-| `GET /grids/{id}/feedbacks` | 미구현 (격자별 피드백 목록 API 없음) |
-| `GET /grids/{id}/feedbacks/me` | 미구현 |
-| `GET /tags` | → `GET /feedbacks/tags` |
-| `POST /devices/register` | 라우트 미등록 (컨트롤러 stub만 존재) |
-| Admin path (`DELETE /admin/reports/{id}` 등) | → `POST /admin/delete-report` 등 (Admin 명세 참고) |
+| `/device` | `app.use` 마운트만 됨. 라우트·컨트롤러 stub → **실사용 API 없음** |
+| `GET /grids/{id}/feedbacks` | 미구현 |
+| 안전등급 배치 | HTTP 아님. 매일 00:00 Asia/Seoul (`SCORE_CRON_ENABLED=false`로 비활성) |
 
 ---
 
@@ -94,6 +108,10 @@
 { "db": "connected" }
 ```
 
+| 코드 | 본문 |
+|---|---|
+| 500 | `{ "db": "disconnected", "error": "..." }` |
+
 ---
 
 ## 4. 인증 API
@@ -108,7 +126,7 @@
   "nickname": "민지킴"
 }
 ```
-- `role`은 서버가 항상 `USER`로 고정
+- `role`은 서버가 `USER`로 고정
 - 비밀번호 최소 8자, email/nickname 최대 50자
 
 **Response 201**
@@ -127,7 +145,7 @@
 | 코드 | message 예 |
 |---|---|
 | 409 | `Email already exists` |
-| 422 | 필수값 누락 / 길이 / 비밀번호 길이 |
+| 422 | `email, password, nickname are required` 등 |
 
 ---
 
@@ -141,39 +159,16 @@
   "client": "web"
 }
 ```
-- `client`: `"web"` \| `"app"` (생략 시 `web`). 헤더 `X-Client-Type`으로도 가능
+- `client`: `"web"` \| `"app"` (생략 시 web). 헤더 `X-Client-Type` 가능
 - 실패 5회 시 약 1분 잠금 (`429`)
 
-#### USER + web → JWT + refresh 쿠키
-**Response 200**
-```json
-{
-  "success": true,
-  "data": {
-    "authType": "jwt",
-    "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "user": { "id": 6, "nickname": "민지킴", "role": "USER", "email": "..." }
-  }
-}
-```
-- `Set-Cookie: refresh_token=...` (httpOnly, 14일)
-- access 만료: **1시간**
+#### USER + web
+**Response 200** — access(body) + refresh 쿠키(7일). `authType` 필드 없음.
 
-#### USER + app → JWT + refresh body
-**Response 200**
-```json
-{
-  "success": true,
-  "data": {
-    "authType": "jwt",
-    "access_token": "...",
-    "refresh_token": "...",
-    "user": { "id": 6, "nickname": "민지킴", "role": "USER", "email": "..." }
-  }
-}
-```
+#### USER + app
+**Response 200** — `access_token` + `refresh_token` (body).
 
-#### ADMIN → 세션
+#### ADMIN
 **Response 200**
 ```json
 {
@@ -185,78 +180,45 @@
 }
 ```
 - `Set-Cookie: connect.sid=...`
-- DB `active_session_id`에 현재 세션 기록 (동시 로그인 시 이전 세션 무효)
+- DB `active_session_id` 갱신 (동시 로그인 시 이전 세션 무효)
 
 | 코드 | 상황 |
 |---|---|
-| 401 | 이메일 없음 / 비밀번호 틀림 |
+| 401 | 이메일/비밀번호 오류 |
 | 403 | 비활성 계정 |
-| 422 | email/password 누락 |
+| 422 | 필수값 누락 |
 | 429 | 로그인 잠금 |
 
 ---
 
 ### POST `/auth/refresh` 🔓*
 
-Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 호출 가능해야 함).
+**Request**: 쿠키 `refresh_token` 또는 body `{ "refresh_token", "client"? }`
 
-**Request**
-- 웹: 쿠키 `refresh_token` + `credentials: include`
-- 앱: body `{ "refresh_token": "...", "client": "app" }`
-
-**Response 200 (web)**
-```json
-{ "success": true, "data": { "access_token": "..." } }
-```
-(+ 새 refresh 쿠키, 기존 refresh 로테이션/폐기)
-
-**Response 200 (app)**
-```json
-{
-  "success": true,
-  "data": { "access_token": "...", "refresh_token": "..." }
-}
-```
+**Response 200**: `{ "success": true, "data": { "access_token" } }` (+ app이면 `refresh_token`)
 
 | 코드 | 상황 |
 |---|---|
-| 401 | refresh 없음 / 무효 / 만료 / 재사용(탈취 의심 시 해당 유저 refresh 전부 폐기) |
+| 401 | refresh 없음 / 무효 / 만료 / 재사용 |
 
 ---
 
 ### POST `/auth/logout` 🔓*
 
-**Request**
-- 웹: refresh 쿠키 및/또는 관리자 세션 쿠키
-- 앱: `{ "refresh_token": "..." }` (쿠키 없으면 body)
+1. refresh 있으면 DB 폐기 + 쿠키 clear  
+2. 관리자 세션 없으면 → `"Already logged out"`  
+3. 관리자 세션 있으면 `active_session_id` null + session destroy → `"Logged out"`
 
-**동작**
-1. refresh 있으면 DB 폐기 + `refresh_token` 쿠키 clear
-2. 관리자 세션 있으면 `active_session_id` null + session destroy + `connect.sid` clear
-
-**Response 200**
-```json
-{ "success": true, "message": "Logged out" }
-```
-또는 `"Already logged out"`
+> USER는 세션이 없으므로 refresh를 폐기해도 메시지는 `"Already logged out"`일 수 있음.
 
 ---
 
 ### POST `/auth/change-pw` 🔓
 
-**Request**
-```json
-{
-  "email": "kim.minji@example.com",
-  "password": "oldPassword",
-  "newPassword": "newPassword123!"
-}
-```
+**Request**: `{ "email", "password", "newPassword" }`  
+JWT 불필요. 기존 토큰은 즉시 폐기되지 않음.
 
-**Response 200**
-```json
-{ "success": true, "message": "비밀번호 변경 완료" }
-```
+**Response 200**: `{ "success": true, "message": "비밀번호 변경 완료" }`
 
 ---
 
@@ -286,23 +248,18 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 
 ### GET `/grids/{id}/infrastructures` 🔓
 
-**Query (선택)**: `type`
+**Query (선택)**: `type` (`CCTV` \| `경찰서` \| `소방서` \| `편의점`)
 
-**Response 200**
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 1, "type": "CCTV", "address": "...", "lat": 37.5665, "lng": 126.9779 }
-  ]
-}
-```
+**Response 200**: `{ success, data: [{ id, type, address, lat, lng }] }`
+
+| 코드 | 상황 |
+|---|---|
+| 404 | Grid not found |
+| 422 | Invalid grid id |
 
 ---
 
 ### GET `/grids/{id}/detail` 🔓
-
-격자 인포카드용 조합 데이터.
 
 **Response 200**
 ```json
@@ -329,54 +286,24 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 }
 ```
 
-| 코드 | 상황 |
-|---|---|
-| 404 | Grid not found |
-| 422 | Invalid grid id |
-
 ---
 
 ### GET `/city-events` 🔓
 
-**Query**: `sw_lat`, `sw_lng`, `ne_lat`, `ne_lng` (필수)
+**Query**: `sw_lat`, `sw_lng`, `ne_lat`, `ne_lng`  
+조건: bbox + `end_at > now` + `is_active='Y'`
 
-조회: bbox 내 + `end_at > now` + 활성
-
-**Response 200**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "type": "행사",
-      "title": "서울 불꽃축제",
-      "description": "...",
-      "lat": 37.5326,
-      "lng": 126.9905,
-      "start_at": "...",
-      "end_at": "...",
-      "img_url": null
-    }
-  ]
-}
-```
+**Response 200**: `{ success, data: [{ id, type, title, description, lat, lng, start_at, end_at, img_url }] }`
 
 ---
 
 ### GET `/infrastructures` 🔓
 
-중심 좌표 + 반경 내 인프라.
+중심 + 반경 (Haversine, 최대 500건, `radius_m` ≤ 20000).
 
-**Query**
+**Query**: `lat`, `lng`, `radius_m` (필수), `type?`
 
-| 파라미터 | 필수 | 설명 |
-|---|---|---|
-| `lat`, `lng` | Y | 중심 |
-| `radius_m` | Y | 반경(m), 최대 20000 |
-| `type` | N | `CCTV` \| `경찰서` \| `소방서` \| `편의점` |
-
-**Response 200**: `{ success, data: [{ id, type, address, lat, lng }] }` (최대 500건)
+**Response 200**: `{ success, data: [{ id, type, address, lat, lng }] }`
 
 ---
 
@@ -384,8 +311,7 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 
 ### GET `/reports` 🔓
 
-**Query (선택)**: `sw_lat`, `sw_lng`, `ne_lat`, `ne_lng`
-
+**Query (선택)**: bbox 네 값 모두 있을 때만 필터.  
 조건: `is_active='Y'` AND `expire_at > now`
 
 **Response 200**
@@ -408,7 +334,6 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
   ]
 }
 ```
-- `is_admin_posted`: 작성자 `user.role === 'ADMIN'` 여부 (응답 조립값)
 
 ---
 
@@ -421,12 +346,12 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
   "lat": 37.4979,
   "lng": 127.0276,
   "description": "강남역 앞 인도 싱크홀",
-  "img_url": "http://localhost:4100/uploads/img/...."
+  "img_url": "http://localhost:5000/uploads/img/...."
 }
 ```
-- `img_url` 선택. 파일은 `/uploads/image` 또는 `/uploads/image/report`로 선업로드
-- 서버가 좌표로 `grid_id` get-or-create
-- `expire_at` = 등록 시각 + **24시간**
+- 좌표로 `grid_id` get-or-create
+- `expire_at` = 등록 + **24시간** (KST 벽시계)
+- 등록 후 FCM 푸시 (`type: report`, topic `all` 등)
 
 **Response 201**
 ```json
@@ -436,25 +361,35 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 }
 ```
 
+| 코드 | 상황 |
+|---|---|
+| 401 | Unauthorized |
+| 422 | 필수값 / maxLength |
+
 ---
 
 ### PATCH `/reports/{id}` 🔐 (본인)
 
-**Request**: `{ "description"?: "...", "img_url"?: "..." | null }`  
-`type` / 좌표 수정 불가.
+**Request**: `{ "description"?: "...", "img_url"?: "..." | null }`
+
+| 코드 | 상황 |
+|---|---|
+| 403 | 본인 아님 |
+| 404 | 없거나 비활성 |
 
 ---
 
 ### DELETE `/reports/{id}` 🔐
 
-본인 또는 JWT role이 `ADMIN`이면 soft delete (`is_active='N'`).
+본인 또는 JWT `ADMIN` → soft delete (`is_active='N'`).
 
 ---
 
 ## 7. 피드백 API
 
-> 격자별 피드백 **목록** API(`GET /grids/{id}/feedbacks`)와 `.../me`는 **미구현**.  
-> 등록은 `POST /grids/{id}/feedbacks`, 수정·삭제는 `/feedbacks/{id}`, 내 목록은 `/mypage/feedback`.
+> 등록: `POST /grids/{id}/feedbacks`  
+> 수정·삭제: `/feedbacks/{id}`  
+> 내 목록: `/mypage/feedback`
 
 ### POST `/grids/{id}/feedbacks` 🔐
 
@@ -470,44 +405,28 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 - `safety_feeling`: `안전` \| `보통` \| `불안`
 - 동일 유저·동일 격자 활성 피드백 있으면 **409**
 
-**Response 201**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 4,
-    "grid_id": 1,
-    "safety_feeling": "보통",
-    "comment": "...",
-    "img_url": null,
-    "tags": [{ "id": 1, "name": "가로등 어두움" }],
-    "created_at": "..."
-  }
-}
-```
+**Response 201**: `{ id, grid_id, safety_feeling, comment, img_url, tags, created_at }`
 
 ---
 
 ### GET `/feedbacks/tags` 🔓
 
 ```json
-{
-  "success": true,
-  "data": [{ "id": 1, "name": "가로등 어두움" }]
-}
+{ "success": true, "data": [{ "id": 1, "name": "가로등 어두움" }] }
 ```
 
 ---
 
 ### PATCH `/feedbacks/{id}` 🔐 (본인)
 
-**Request**: `safety_feeling?`, `comment?`, `img_url?`, `tag_ids?`
+**Request**: `safety_feeling?`, `comment?`, `img_url?`, `tag_ids?`  
+`tag_ids` 전송 시 기존 태그 **교체**.
 
 ---
 
 ### DELETE `/feedbacks/{id}` 🔐
 
-본인 또는 JWT `ADMIN` → soft delete (`is_active='N'`).
+본인 또는 JWT `ADMIN` → soft delete.
 
 ---
 
@@ -519,31 +438,34 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 {
   "success": true,
   "data": {
-    "user": { "id": "...", "email": "...", "nickname": "...", "role": "USER", "...": "..." },
+    "user": { "id": "6", "email": "...", "nickname": "...", "role": "USER", "is_active": "Y", "created_at": "..." },
     "reportCount": 3,
     "feedbackCount": 2
   }
 }
 ```
+- `reportCount`: 해당 유저 제보 전체(비활성 포함)
+- `feedbackCount`: 활성 피드백만
+
+---
 
 ### GET `/mypage/report` 🔐
 
-**Query**: `page` (기본 1), `limit` (기본 10)  
-내 활성 제보 목록 (`user.nickname` include).
+**Query**: `page`(1), `limit`(10) — 내 활성 제보
+
+---
 
 ### GET `/mypage/feedback` 🔐
 
-**Query**: `page`, `limit`  
-내 활성 피드백 + `tags: [{ id, name }]`.
+**Query**: `page`, `limit` — 내 활성 피드백 + tags
 
 ---
 
 ## 9. 업로드 API
 
-### POST `/uploads/image` 🔓
+필드명 `image`, `multipart/form-data`. 최대 **5MB**, MIME `image/*`.
 
-`multipart/form-data`, 필드명 `image`  
-제한: 이미지 MIME, 최대 5MB
+### POST `/uploads/image` 🔓
 
 **Response 201**
 ```json
@@ -553,19 +475,28 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
     "original_name": "photo.jpg",
     "file_name": "1785-....jpg",
     "image_path": "/uploads/img/1785-....jpg",
-    "img_url": "http://localhost:4100/uploads/img/1785-....jpg",
+    "img_url": "http://localhost:5000/uploads/img/1785-....jpg",
     "size": 102400
   }
 }
 ```
 
+| 코드 | 상황 |
+|---|---|
+| 400 | 파일 없음 / 이미지가 아님 |
+| 413 | 5MB 초과 |
+
+---
+
 ### POST `/uploads/image/report` 🔓
 
-제보용: 메모리 수신 → 얼굴 마스킹 → 디스크 저장. 응답 형태는 위와 동일.
+제보용: 얼굴 마스킹 후 저장. 응답 형태 동일. 마스킹 실패 시 `500`.
+
+---
 
 ### GET `/uploads/**` 🔓
 
-정적 파일 서빙 (`express.static`).
+정적 파일 서빙 (`UPLOAD_DIR` 또는 `{cwd}/uploads`).
 
 ---
 
@@ -573,15 +504,15 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
 
 ### GET `/accident-zones` 🔓
 
-도로교통공단 OpenAPI 프록시. `KOROAD_AUTH_KEY` 필요.
+도로교통공단 OpenAPI 프록시. `KOROAD_AUTH_KEY` 필요. 타입·시군구별 **메모리 캐시 10분**.
 
 **Query**
 
 | 파라미터 | 필수 | 설명 |
 |---|---|---|
-| `siDo` | Y | 시도 코드 2자리 (예: 서울 `11`) |
+| `siDo` | Y | 시도 코드 2자리 (서울 `11`) |
 | `guGun` | Y | 시군구 코드 1~3자리 |
-| `type` | N | `pedestrian` \| `bicycle` \| `motorcycle` \| `schoolzone` (생략 시 4종 전부) |
+| `type` | N | `pedestrian` \| `bicycle` \| `motorcycle` \| `schoolzone` (생략 시 4종) |
 
 **Response 200**
 ```json
@@ -592,92 +523,230 @@ Access 만료 시 호출. **`authMiddleware` 없음** (만료된 access로도 �
     "guGun": "680",
     "types": ["pedestrian"],
     "count": 10,
-    "items": [ ]
+    "items": [
+      {
+        "id": "pedestrian:2025083:12345",
+        "type": "pedestrian",
+        "name": "강남역 인근",
+        "yearCd": "2025083",
+        "lat": 37.4979,
+        "lng": 127.0276,
+        "occrrnc_cnt": 12,
+        "caslt_cnt": 15,
+        "dth_dnv_cnt": 0,
+        "path": [{ "lat": 37.497, "lng": 127.027 }]
+      }
+    ]
   }
 }
 ```
 
 | 코드 | 상황 |
 |---|---|
-| 422 | siDo/guGun/type 형식 오류 |
+| 422 | 파라미터/형식 오류 |
+| 502 | 공단 API 실패 |
 | 503 | `KOROAD_AUTH_KEY` 미설정 |
 
 ---
 
-## 11. 관리자 API 요약 👑
+## 11. 알림 (FCM) API
 
-`/admin/*` 전 구간 `adminMiddleware` (세션 `role=ADMIN` + `active_session_id` 검증).
+### POST `/notification/register` 🔓†
+
+**Request**
+```json
+{
+  "fcmToken": "...",
+  "device_type": "web"
+}
+```
+- `device_tokens` upsert (`is_active='Y'`)
+- `user_id`: `req.user`(JWT) 또는 관리자 세션이 있으면 연결, 없으면 `null`
+- 현재 코드는 등록 시 `all` 토픽 구독 호출
+
+**Response 200**: `{ "success": true, "message": "FCM token 설정 완료" }`
+
+| 코드 | 상황 |
+|---|---|
+| 400 | `FCM token is required` |
+
+---
+
+### PATCH `/notification/unregister` 🔓
+
+**Request**: `{ "fcmToken": "..." }`  
+해당 토큰의 `user_id`를 `null`로 (토큰 행은 유지).
+
+**Response 200**: `{ "success": true, "message": "FCM token 연결 해제 완료" }`
+
+---
+
+### POST `/notification/send-all` 🔓
+
+백엔드 테스트용. body에 `fcmToken` 필요하지만 실제 전송은 topic `all`.
+
+**Response 200**: `{ "success": true, "messageId": ... }`
+
+---
+
+## 12. Sync API (앱 캐시)
+
+앱이 로컬 버전과 비교 후 필요한 데이터만 받는 용도.  
+`data_version` 테이블의 `data_type` 예: `grid`, `infrastructure`.
+
+### GET `/sync/version` 🔓
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "data_type": "grid",
+      "version": "1",
+      "updated_at": "2026-08-20T04:27:36.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET `/sync/grids` 🔓
+
+격자 **전체** + 버전 메타.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "data_type": "grid",
+    "version": "1",
+    "updated_at": "...",
+    "items": [
+      {
+        "grid_id": 1,
+        "grid_row": 0,
+        "grid_col": 0,
+        "lat": 37.5,
+        "lng": 127.0,
+        "infra_count": 3,
+        "safety_grade": "보통"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### GET `/sync/infrastructures` 🔓
+
+인프라 **커서 페이지네이션** (id 오름차순).
+
+**Query**
+
+| 파라미터 | 기본 | 설명 |
+|---|---|---|
+| `limit` | 2000 | 페이지 크기 (최대 5000) |
+| `cursor` | 0 | 이 id **초과**부터 조회 (`id > cursor`) |
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "data_type": "infrastructure",
+    "version": "1",
+    "updated_at": "...",
+    "items": [
+      {
+        "id": 1,
+        "grid_id": 10,
+        "type": "CCTV",
+        "address": "...",
+        "lat": 37.5,
+        "lng": 127.0
+      }
+    ],
+    "next_cursor": 2000,
+    "has_more": true
+  }
+}
+```
+
+앱: `has_more === true`이면 `cursor=next_cursor`로 반복. 전부 받은 뒤 로컬 버전 갱신.
+
+| 코드 | 상황 |
+|---|---|
+| 422 | `limit` / `cursor` 형식 오류 |
+
+---
+
+## 13. 관리자 API 요약 👑
+
+`/admin/*` 전 구간 `adminMiddleware` (세션 `role=ADMIN` + `active_session_id`).  
+세션 없음 → `401`, 다른 곳 로그인 → `403`.
 
 | Method | Path | 설명 |
 |---|---|---|
 | GET | `/admin/me` | 세션 관리자 정보 |
 | GET | `/admin/summary` | 대시보드 집계 |
-| GET | `/admin/reports` | 제보 목록 (+ types, nickname/keyword 검색) |
-| POST | `/admin/create-report` | 제보 등록 |
+| GET | `/admin/reports` | 제보 목록 |
+| POST | `/admin/create-report` | 제보 등록 (+ FCM) |
 | POST | `/admin/delete-report` | 제보 소프트 삭제 |
 | POST | `/admin/restore-report` | 제보 복구 |
 | GET | `/admin/feedbacks` | 피드백 목록 |
 | POST | `/admin/delete-feedback` | 피드백 소프트 삭제 |
-| GET | `/admin/events` | 도시행사 목록 (+ status 필터) |
+| GET | `/admin/events` | 도시행사 목록 |
 | POST | `/admin/create-event` | 행사 등록 |
 | POST | `/admin/update-event` | 행사 수정 |
 | POST | `/admin/delete-event` | 행사 소프트 삭제 |
 | POST | `/admin/restore-event` | 행사 복구 |
 | GET | `/admin/grid-id` | lat/lng → grid id |
 
-**GET `/admin/summary` 응답 예**
-```json
-{
-  "success": true,
-  "data": {
-    "active_reports": 24,
-    "reports_today": 3,
-    "total_feedbacks": 1286,
-    "feedbacks_today": 17,
-    "active_city_events": 5,
-    "inactive_city_events": 2
-  }
-}
-```
+**GET `/admin/summary` 응답 필드**
 
-쿼리·바디·에러 상세는 **`docs/Admin API 명세서.md`** 를 기준으로 한다.
+| 필드 | 의미 |
+|---|---|
+| `active_reports` | 활성 제보 수 |
+| `reports_today` | 오늘(KST) 등록 활성 제보 |
+| `total_feedbacks` | 피드백 전체(비활성 포함) |
+| `feedbacks_today` | 오늘 등록 활성 피드백 |
+| `active_city_events` | 활성 + 미종료 |
+| `inactive_city_events` | 활성 + 종료됨 |
+| `five_days_reports_count` | 최근 5일 일별 제보 |
+| `five_days_feedbacks_count` | 최근 5일 일별 피드백 |
+
+상세 쿼리·바디: **`docs/Admin API 명세서.md`**
 
 ---
 
-## 12. 디바이스 API
-
-`app.use("/devices", ...)` 는 마운트되어 있으나 **라우트 미등록**.  
-`device.controller` stub만 존재 → `POST /devices/register` 등은 **미구현**.
-
----
-
-## 13. 인증 흐름 요약
+## 14. 인증 흐름 요약
 
 ```
 [USER 웹]
-  login → access(body) + refresh(cookie)
+  login → access(body, 30분) + refresh(cookie, 7일)
   API → Authorization: Bearer access
-  access 만료 → POST /auth/refresh (cookie) → 새 access
-  logout → POST /auth/logout (cookie clear + DB revoke)
+  access 만료 → POST /auth/refresh (cookie)
+  logout → POST /auth/logout
 
 [USER 앱]
   login (client=app) → access + refresh (body)
   refresh/logout → body.refresh_token
-  로컬 Secure Storage에서 토큰 삭제
 
 [ADMIN]
-  login → connect.sid 세션
-  /admin/* → credentials include
+  login → connect.sid 세션 (2시간, rolling) + authType: session
+  /admin/* → credentials: include
   logout → session destroy
 ```
 
 ---
 
-## 14. 반영 이력
+## 15. 반영 이력
 
 | 버전 | 변경사항 |
 |---|---|
-| v1.0 | 최초 작성 |
-| v1.1 | DB설계서 반영 (`img_url`, city-events, devices 등) |
-| v1.2 | `admin/summary`, `feedbacks/me` 등 UI 공백 반영 |
-| v1.3 | **현재 코드 기준 전면 갱신**: JWT+세션 이중 인증, web/app refresh 분기, `/auth/register`·`refresh`·`logout`·`change-pw`, `/mypage`, `/uploads`, `/infrastructures`, `/accident-zones`, Admin path 정리, 미구현 API 명시 (`shelters`, `devices`, 격자 피드백 목록/`me`) |
+| v1.0 ~ v1.4 | 이전 이력 (인증·지도·제보·피드백·마이페이지·업로드·사고다발·Admin) |
+| v1.5 | **코드 재대조**: Base URL 포트 5000, `/notification/*`(register·unregister·send-all), `/sync/*`(version·grids·infrastructures 페이지네이션), `/device` stub 명시, 제보 등록 FCM 언급, optionalAuth 미연결 주의 |

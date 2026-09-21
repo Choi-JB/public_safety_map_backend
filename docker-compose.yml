@@ -1,0 +1,12 @@
+services:
+  app:
+    image: choijb/public-safety-map-backend:latest
+    network_mode: host
+    container_name: public-safety-map-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads

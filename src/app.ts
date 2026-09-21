@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { SESSION_SECRET } from "./config/env";
+import { SESSION_SECRET, CORS_ORIGINS } from "./config/env";
 
 import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
@@ -26,11 +26,13 @@ import syncRoutes from "./routes/sync.routes";
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 4100;
+app.set("trust proxy", 1);
+
+const PORT = Number(process.env.PORT) || 5000;
 
 app.use(cors(
   {
-    origin: "http://localhost:3000", // 정확한 origin
+    origin: CORS_ORIGINS,
     credentials: true, // 쿠키 허용
   }
 ));
@@ -44,8 +46,8 @@ app.use(session({
   rolling: true,    // 매 요청마다 세션 갱신
   cookie: {
     httpOnly: true,
-    secure: false,      // 배포할 때는 true, 개발할 때는 false
-    sameSite: "lax",
+    secure: true,      // 배포할 때는 true, 개발할 때는 false
+    sameSite: "none",
     maxAge: 1000 * 60 * 60 * 2,   // 2시간 후 자동 만료
   },
   
@@ -67,7 +69,7 @@ app.use("/sync", syncRoutes);
 //사고 다발구역
 app.use("/accident-zones", accidentZoneRoutes);
 // 이미지 파일 정적 파일 서비스
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
