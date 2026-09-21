@@ -183,8 +183,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     //웹: 쿠키로 refresh 전달, body로 access token 전달
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,//만료시간 7일
     });
 
@@ -250,8 +250,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         res.clearCookie("refresh_token", {
           path: "/",
           httpOnly: true,
-          secure: false,
-          sameSite: "lax",
+          secure: true,
+          sameSite: "none",
         });
       }
       //하지만 요청은 거절되게
@@ -333,8 +333,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     //웹: 쿠키로 refresh token 전달, body로 access token 전달
     res.cookie("refresh_token", newRefreshToken, {
       httpOnly: true,
-      secure: false, // 배포 HTTPS면 true
-      sameSite: "lax",
+      secure: true, // 배포 HTTPS면 true
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -372,8 +372,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       res.clearCookie("refresh_token", {
         path: "/",
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
       });
     }
 
@@ -398,8 +398,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       res.clearCookie("connect.sid", {
         path: "/",
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
       });
       res.status(200).json({ success: true, message: "Logged out" });
     });
