@@ -38,7 +38,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 이메일 조회
-    const user = await prisma.user.findFirst({ where: { email } });
+    const user = await prisma.user.findUnique({
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        password_hash: true,
+        role: true,
+        is_active: true,
+        locked_until: true,
+        failed_login_count: true,
+      },
+      where: { email }
+    });
     if (!user || !user.password_hash) {
       res.status(401).json({
         success: false,
@@ -56,7 +68,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     //로그인 잠금 여부 확인
-    if(user.locked_until && user.locked_until > new Date()) {
+    if (user.locked_until && user.locked_until > new Date()) {
       const remainingMin = Math.ceil(
         (user.locked_until.getTime() - Date.now()) / 60000
       );
@@ -67,32 +79,32 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    //3) 로그인 시도 선점: 비교 전에 시도 번호를 먼저 확보. 허용 범위 밖이면 bcrypt 전에 차단
+    const attempt = await reserveLoginAttempt(user);
+    if (!attempt.allowed) {
+      res.status(429).json({
+        success: false,
+        message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      });
+      return;
+    }
+
     // 비밀번호 검증
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
-      const newCount = user.failed_login_count + 1;
-      const shouldLock = newCount >= MAX_FAILED_ATTEMPTS;
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          failed_login_count: shouldLock ? 0 : newCount,
-          locked_until: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
-        },
-      });
       res.status(401).json({
         success: false,
-        message: `잘못된 비밀번호 입니다. 남은 로그인 횟수: ${MAX_FAILED_ATTEMPTS - newCount} 회`,
+        message: `잘못된 비밀번호 입니다. 남은 로그인 횟수: ${Math.max(0, MAX_FAILED_ATTEMPTS - attempt.count)} 회`,
       });
       return;
     }
 
     //로그인 성공 - 실패 카운트 초기화
-    if(user.failed_login_count > 0) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failed_login_count: 0, locked_until: null },
-      });
-    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failed_login_count: 0, locked_until: null },
+    });
+
 
     // 관리자 로그인 처리
     if (user.role === "ADMIN") {
@@ -100,14 +112,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       (req as any).session.userId = String(user.id);
       (req as any).session.role = "ADMIN";
       (req as any).session.nickname = user.nickname ?? undefined;
-      
+
       //동시 세션 제한: 이 세션 ID를 "현재 유효한 세션"으로 기록
       //다른 곳에서 로그인해 있던 이전 세션은 이 값이 바뀌는 순간 자동으로 무효화됨
       await prisma.user.update({
         where: { id: user.id },
         data: { active_session_id: String(req.sessionID) },
       });
-      
+
       res.status(200).json({
         success: true,
         data: {
@@ -133,7 +145,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // refresh token 발급 (원본은 쿠키로, 해시만 DB에 저장)
     const refreshToken = generateRefreshToken();
     const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);//만료시간 7일
-    
+
     await prisma.refresh_token.create({
       data: {
         user_id: user.id,
@@ -144,14 +156,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     //웹/앱 구분
-    const clientRaw = 
+    const clientRaw =
       (typeof req.body?.client === "string" && req.body.client.trim()) ||
       req.get("x-client-type") ||
       "web";
     const isApp = clientRaw.toLowerCase() === "app";
 
     // 앱: body로 refresh 전달 (쿠키는 선택 — 안 심어도 됨)
-    if(isApp) {
+    if (isApp) {
       res.status(200).json({
         success: true,
         data: {
@@ -197,16 +209,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 /** 토큰 갱신 (refresh token 검증 → 로테이션 → 새 access token 발급) */
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
+
+    //0) 쿠키에 refresh token 유무 확인
     const incomingToken = req.cookies?.refresh_token ||
-        (typeof req.body?.refresh_token === "string"
-          ? req.body.refresh_token.trim()
-          : undefined);
+      (typeof req.body?.refresh_token === "string"
+        ? req.body.refresh_token.trim()
+        : undefined);
     //쿠키에 refresh token 유무 확인
     if (!incomingToken) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
+    //1) 토큰 조회
     //refresh token 해시 생성
     const tokenHash = hashRefreshToken(incomingToken);
     //DB에 저장된 refresh token 조회
@@ -220,63 +235,82 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const GRACE_MS = 10_000;
+
+    //2) 이미 폐기된 토큰인가?
     // 재사용 탐지: 이미 폐기된 토큰이 다시 들어옴 → 탈취 의심 → 해당 유저 전체 토큰 폐기
     if (stored.revoked_at) {
-      await prisma.refresh_token.updateMany({
-        where: { user_id: stored.user_id, revoked_at: null },
-        data: { revoked_at: new Date() },
-      });
-      res.clearCookie("refresh_token",{
-        path: "/",
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      });
+      //폐기된 토큰이 다시 와도 폐기된 지 몇 초 안이면 탈취로 의심 안함(10초 안이면 전체 토큰 폐기 안함)
+      const justRevoked = Date.now() - stored.revoked_at.getTime() < GRACE_MS;
+      if (!justRevoked) {
+        await prisma.refresh_token.updateMany({
+          where: { user_id: stored.user_id, revoked_at: null },
+          data: { revoked_at: new Date() },
+        });
+        res.clearCookie("refresh_token", {
+          path: "/",
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+        });
+      }
+      //하지만 요청은 거절되게
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
-    // 만료 체크 : 만료된 토큰이 들어오면 401 에러
+    //3) 만료 체크 : 만료된 토큰이 들어오면 401 에러
     if (stored.expires_at < new Date()) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { id: stored.user_id } });
-
+    //4) 유저 조회 : 유저 조회 결과 없거나 비활성화된 계정이면 401 에러
+    const user = await prisma.user.findUnique({ select: { id: true, is_active: true, role: true }, where: { id: stored.user_id } });
     if (!user || user.is_active !== "Y") {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
-    // 로테이션: 기존 토큰 폐기 + 새 토큰 발급 (트랜잭션으로 묶어 원자성 보장)
+    //5) 로테이션: 기존 토큰 폐기 + 새 토큰 발급 (트랜잭션으로 묶어 원자성 보장)
     const newRefreshToken = generateRefreshToken();
     const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); //만료시간 7일
-
-    //access token 발급
-    const access_token = jwt.sign(
-      { role: user.role },
-      JWT_SECRET,
-      { subject: String(user.id), expiresIn: "30m" }
-    );
+    let claimed = false;
 
 
-    await prisma.$transaction([
-      prisma.refresh_token.update({
-        where: { id: stored.id },
+    //소비 + 새 토큰 발급
+    await prisma.$transaction(async (tx) => {
+      //기존 꺼 폐기(아직 안 쓴 경우에만)
+      const result = await tx.refresh_token.updateMany({
+        where: { id: stored.id, revoked_at: null },   // 아직 안 쓴 경우에만
         data: { revoked_at: new Date() },
-      }),
-      prisma.refresh_token.create({
+      });
+      if (result.count === 0) return;     // 그 사이 다른 요청이 먼저 씀
+
+      //새 토큰 발급
+      await tx.refresh_token.create({
         data: {
           user_id: user.id,
           token_hash: hashRefreshToken(newRefreshToken),
           expires_at: newExpiresAt,
           created_at: new Date(),
         },
-      }),
-    ]);
+      });
+      claimed = true;
+    });
+    if (!claimed) {
+      // 2)~4)를 통과한 뒤 폐기된 것이므로 "방금 폐기됨"이 확실 → 전체 폐기 없이 이 요청만 거절
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
 
-    
+    //6) 새 access token 발급
+    const access_token = jwt.sign(
+      { role: user.role },
+      JWT_SECRET,
+      { subject: String(user.id), expiresIn: "30m" }
+    );
+
     //웹/앱 구분
     const clientRaw =
       (typeof req.body?.client === "string" && req.body.client.trim()) ||
@@ -295,8 +329,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    
-    //웹: 쿠키로 refresh 전달, body로 access token 전달
+
+    //웹: 쿠키로 refresh token 전달, body로 access token 전달
     res.cookie("refresh_token", newRefreshToken, {
       httpOnly: true,
       secure: true, // 배포 HTTPS면 true
@@ -304,7 +338,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    
+
     res.status(200).json({
       success: true,
       data: { access_token },
@@ -324,9 +358,9 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     //일반 유저 : refresh token 폐기
     const incomingToken = req.cookies?.refresh_token ||
-        (typeof req.body?.refresh_token === "string"
-          ? req.body.refresh_token.trim()
-          : undefined);
+      (typeof req.body?.refresh_token === "string"
+        ? req.body.refresh_token.trim()
+        : undefined);
 
     //일반 유저: refresh token 폐기
     if (incomingToken) {
@@ -335,7 +369,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
         where: { token_hash: tokenHash, revoked_at: null },
         data: { revoked_at: new Date() },
       });
-      res.clearCookie("refresh_token",{
+      res.clearCookie("refresh_token", {
         path: "/",
         httpOnly: true,
         secure: true,
@@ -361,7 +395,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
         res.status(500).json({ success: false, message: "Internal server error" });
         return;
       }
-      res.clearCookie("connect.sid",{
+      res.clearCookie("connect.sid", {
         path: "/",
         httpOnly: true,
         secure: true,
@@ -465,14 +499,14 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       });
       return;
     }
-    
+
     //이메일 조회
     const user = await prisma.user.findFirst({ where: { email } });
     if (!user || !user.password_hash) {
       res.status(401).json({ success: false, message: "존재하지 않는 이메일입니다." });
       return;
     }
-    
+
     //비밀번호 검증
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
@@ -492,3 +526,44 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+
+/** 시도 선점: 비교 전에 시도 번호를 먼저 확보. 허용 범위 밖이면 bcrypt 전에 차단 */
+async function reserveLoginAttempt(user: {
+  id: bigint;
+  locked_until: Date | null;
+}): Promise<{ allowed: boolean; count: number }> {
+  const now = new Date();
+
+  // 1) 잠금 중이면 즉시 거절
+  if (user.locked_until && user.locked_until > now) {
+    return { allowed: false, count: MAX_FAILED_ATTEMPTS };
+  }
+
+  // 2) 잠금이 이미 풀렸다면 카운트 초기화 (조건부라 동시에 와도 한 요청만 실제로 바꿈)
+  if (user.locked_until) {
+    await prisma.user.updateMany({
+      where: { id: user.id, locked_until: { lte: now } },
+      data: { failed_login_count: 0, locked_until: null },
+    });
+  }
+
+  // 3) 시도 선점: DB가 count + 1을 원자적으로 계산
+  const { failed_login_count: count } = await prisma.user.update({
+    where: { id: user.id },
+    data: { failed_login_count: { increment: 1 } },
+    select: { failed_login_count: true },
+  });
+
+  // 4) 한도를 넘은 번호표는 비교 전에 차단
+  if (count > MAX_FAILED_ATTEMPTS) return { allowed: false, count };
+
+  // 5) 5번째 번호표를 뽑는 순간 잠금 설정 (>= 로 비교)
+  if (count >= MAX_FAILED_ATTEMPTS) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { locked_until: new Date(Date.now() + LOCKOUT_DURATION_MS) },
+    });
+  }
+  return { allowed: true, count };
+}

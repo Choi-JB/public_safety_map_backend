@@ -11,7 +11,14 @@ export const getMypage = async (req: Request, res: Response): Promise<Response> 
 
     //유효성 검사
     const user = await prismaClient.user.findUnique({
-      where: { id: userId },
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        role: true,
+
+      },
+      where: { id: userId, is_active: "Y" },
     });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
