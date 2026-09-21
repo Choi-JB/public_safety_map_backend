@@ -2,7 +2,7 @@
 // 내용: 유저 인증 미들웨어
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import prisma from "../config/prismaClient";
+//import prisma from "../config/prismaClient";
 import { JWT_SECRET } from "../config/env";
 
 export const authMiddleware = async (
@@ -35,17 +35,9 @@ export const authMiddleware = async (
       return;
     }
 
-    // 사용자 정보 조회
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(String(rawId)) },
-    });
-    //유효성 검사: user가 없거나 is_active가 Y가 아니면 401 에러 반환
-    if (!user || user.is_active !== "Y") {
-      res.status(401).json({ success: false, message: "Unauthorized 비활성화된 계정입니다. 관리자에게 문의해주세요." });
-      return;
-    }
+    // 서명·만료만 검증(DB 조회 없음). 계정 비활성화는 Refresh 시점에서 차단되어 Access Token 수명 이내에 반영됨
 
-    (req as any).user = { id: user.id, role: user.role };
+    (req as any).user = { id: BigInt(String(rawId)), role: payload.role };
     next();
   } catch {
     res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
@@ -77,15 +69,9 @@ export const optionalAuthMiddleware = async (
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: BigInt(String(rawId)) },
-    });
-    if (!user || user.is_active !== "Y") {
-      res.status(401).json({ success: false, message: "Unauthorized 비활성화된 계정입니다. 관리자에게 문의해주세요." });
-      return;
-    }
+    // 서명·만료만 검증(DB 조회 없음). 계정 비활성화는 Refresh 시점에서 차단되어 Access Token 수명 이내에 반영됨
 
-    (req as any).user = { id: user.id, role: user.role };
+    (req as any).user = { id: BigInt(String(rawId)), role: payload.role };
     next();
   } catch {
     res.status(401).json({ success: false, message: "Unauthorized 유효한 토큰이 아닙니다." });
