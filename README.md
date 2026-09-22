@@ -24,8 +24,10 @@
 ---
 
 ## 🎬 DEMO
-
-[데모 버전 링크](https://43-202-197-59.nip.io/health)
+AWS+Lightsail
+[데모 버전 링크1](https://43-202-197-59.nip.io/health)
+Render
+[데모 버전 링크2](https://public-safety-map-backend.onrender.com/health)
 
 자세한 건 API 명세서 참조
 
