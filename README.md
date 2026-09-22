@@ -2,8 +2,8 @@
 
 공공데이터로는 알 수 없는 체감 안전도를, 실시간 제보와 평가로 채운 치안 정보 지도 서비스입니다.
 
-[Web 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_web)  
-[App 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_app)
+- [Web 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_web)
+- [App 버전 페이지 링크](https://github.com/Choi-JB/public_safety_map_app)
 
 ---
 
